@@ -64,6 +64,27 @@ export default function BookAppointment() {
     setError(null);
     
     try {
+        // 1. Healing: Ensure Profile Exists first (to avoid FK error)
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', session.user.id)
+            .maybeSingle();
+        
+        if (!profile) {
+            console.log("Profile missing, creating default...");
+            const { error: createError } = await supabase.from('profiles').insert([{ 
+                id: session.user.id,
+                email: session.user.email,
+                role: 'user' // Default role
+            }]);
+            
+            if (createError) {
+                 console.error("Failed to create default profile:", createError);
+                 throw new Error("Could not create user profile. Please update your profile manually.");
+            }
+        }
+
         const { data: appointmentData, error: appointmentError } = await supabase
             .from('appointments')
             .insert([{
