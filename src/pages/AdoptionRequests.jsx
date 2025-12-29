@@ -7,14 +7,40 @@ export default function AdoptionRequests() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending'); // 'pending', 'approved', 'rejected', 'all'
 
+  const [userRole, setUserRole] = useState(null);
+
   useEffect(() => {
-    fetchRequests();
+    checkAccessAndFetch();
   }, []);
 
-  const fetchRequests = async () => {
+  const checkAccessAndFetch = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+          window.location.href = '/auth';
+          return;
+      }
+
+      // Check Role
+      const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+      
+      if (profile) {
+          if (!['rescuer', 'shelter', 'vet'].includes(profile.role)) {
+              alert("Access Denied: Specialized Account Required.");
+              window.location.href = '/';
+              return;
+          }
+          setUserRole(profile.role);
+          fetchRequests(session.user);
+      }
+  };
+
+  const fetchRequests = async (user) => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       // 1. Fetch requests for pets posted by THIS user
@@ -58,6 +84,22 @@ export default function AdoptionRequests() {
       
       // Update local state
       setRequests(requests.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
+
+      // NOTIFY THE CITIZEN
+      const request = requests.find(r => r.id === requestId);
+      if (request) {
+          const message = newStatus === 'approved' 
+              ? `Good news! Your adoption request for ${request.adoptions.name} has been APPROVED! The rescuer will contact you.`
+              : `Update: Your adoption request for ${request.adoptions.name} was ${newStatus}.`;
+          
+          await supabase.from('notifications').insert([{
+              user_id: request.requester_id,
+              type: 'adoption_request',
+              message: message,
+              metadata: { request_id: requestId, adoption_id: request.adoption_id }
+          }]);
+      }
+
     } catch (error) {
       console.error('Error updating status:', error);
       alert('Failed to update status');

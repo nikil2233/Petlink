@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { X, Heart, MapPin, Shield, Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Heart, MapPin, Shield, Info, CheckCircle, AlertCircle, ChevronLeft } from 'lucide-react';
 
 export default function AdoptionDetailsModal({ animal, isOpen, onClose, session }) {
   const [view, setView] = useState('details'); // 'details' or 'apply'

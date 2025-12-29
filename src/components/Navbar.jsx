@@ -1,86 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../context/AuthContext';
 import { Menu, X, Heart, LogOut, Stethoscope, MapPin, Calendar, ChevronDown, Bell } from 'lucide-react';
 
 export default function Navbar() {
-  const [session, setSession] = useState(null);
-  const [userRole, setUserRole] = useState(null);
+  const { session, user, role: userRole, signOut } = useAuth(); // Use Context
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Notification Logic (Separate)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        // Fetch Profile & Role
-        supabase
-          .from('profiles')
-          .select('avatar_url, role')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data }) => {
-             if (data) {
-                 setUserRole(data.role);
-                 if (data.avatar_url) {
-                    setSession(prev => ({ ...prev, user: { ...prev.user, avatar_url: data.avatar_url } }));
-                 }
-             }
-          });
-
+    if (user) {
         // Fetch Notifications
-        fetchNotifications(session.user.id);
+        fetchNotifications(user.id);
         
         // Subscribe to new notifications
         const channel = supabase
           .channel('public:notifications')
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` }, payload => {
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, payload => {
               setNotifications(prev => [payload.new, ...prev]);
           })
           .subscribe();
 
         return () => supabase.removeChannel(channel);
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      
-      try {
-        if (session) {
-            // Fetch Notification & Role on login/change
-            fetchNotifications(session.user.id);
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('role, avatar_url')
-              .eq('id', session.user.id)
-              .maybeSingle(); // Use maybeSingle to avoid errors on no rows
-            
-            if (error) {
-                console.error("Error fetching profile:", error);
-            } else if (data) {
-                setUserRole(data.role);
-                 if (data.avatar_url) {
-                      setSession(prev => ({ ...prev, user: { ...prev.user, avatar_url: data.avatar_url } }));
-                   }
-            }
-        } else {
-            // Reset on logout (redundant check)
-            setUserRole(null);
-            setNotifications([]);
-        }
-      } catch (err) {
-          console.error("Navbar auth error:", err);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    } else {
+        setNotifications([]);
+    }
+  }, [user]);
 
   const fetchNotifications = async (userId) => {
       const { data } = await supabase
@@ -99,11 +49,9 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-        setSession(null);
-        setUserRole(null);
+        await signOut();
         setNotifications([]);
         navigate('/');
-        await supabase.auth.signOut();
     } catch (error) {
         console.error("Error logging out:", error);
     }
@@ -222,10 +170,10 @@ export default function Navbar() {
 
               <Link to="/profile" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
                  <div style={{ width: '36px', height: '36px', background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '600', overflow: 'hidden' }}>
-                    {session.user.avatar_url ? (
-                        <img src={session.user.avatar_url} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {user?.avatar_url ? (
+                        <img src={user.avatar_url} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                        session.user.email?.charAt(0).toUpperCase()
+                        user?.email?.charAt(0).toUpperCase()
                     )}
                  </div>
               </Link>
