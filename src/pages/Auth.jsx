@@ -173,7 +173,15 @@ export default function Auth() {
 
     } catch (err) {
       console.error("Auth Error:", err);
-      setError(err.message || "An unknown error occurred");
+      if (err.message && (err.message.includes("Email not confirmed") || err.message.includes("Invalid login credentials"))) {
+           if (err.message.includes("Email not confirmed")) {
+               setError("Please confirm your email address before logging in. Check your inbox (and spam folder).");
+           } else {
+               setError("Invalid email or password.");
+           }
+      } else {
+           setError(err.message || "An unknown error occurred");
+      }
     } finally {
       setLoading(false);
       console.log("Auth: Finished");

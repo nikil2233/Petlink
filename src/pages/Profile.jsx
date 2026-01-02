@@ -129,6 +129,7 @@ export default function Profile() {
 
       const updates = {
         id: session.user.id,
+        email: profile.email, // Required for upsert if row doesn't exist
         full_name: profile.full_name,
         location: profile.location,
         address: profile.address,

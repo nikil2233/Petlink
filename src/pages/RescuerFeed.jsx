@@ -111,25 +111,172 @@ export default function RescuerFeed() {
       }
   };
 
+  // Scheduling Logic
+  const [schedulingReport, setSchedulingReport] = useState(null);
+  const [pickupDate, setPickupDate] = useState('');
+  const [pickupTime, setPickupTime] = useState('');
+
+  const handleAcceptClick = (report) => {
+      setSchedulingReport(report);
+      // Default to tomorrow 9am?
+      const tmr = new Date();
+      tmr.setDate(tmr.getDate() + 1);
+      setPickupDate(tmr.toISOString().split('T')[0]);
+      setPickupTime('09:00');
+  };
+
+  const confirmPickup = async () => {
+      if (!pickupDate || !pickupTime) {
+          alert("Please select both date and time.");
+          return;
+      }
+
+      setLoading(true);
+      try {
+          const timestamp = new Date(`${pickupDate}T${pickupTime}`).toISOString();
+          
+          // 1. Update Report
+          const { error: updateError } = await supabase
+              .from('reports')
+              .update({ 
+                  status: 'accepted',
+                  expected_pickup_time: timestamp
+              })
+              .eq('id', schedulingReport.id);
+
+          if (updateError) throw updateError;
+
+          // 2. Notify Citizen
+          const { error: notifyError } = await supabase
+              .from('notifications')
+              .insert([{
+                  user_id: schedulingReport.user_id,
+                  type: 'report_update',
+                  message: `Good News! A rescuer has accepted your request. Estimated pickup: ${pickupDate} at ${pickupTime}.`,
+                  metadata: { report_id: schedulingReport.id }
+              }]);
+          
+          if (notifyError) console.error("Notification Error:", notifyError);
+
+          // Update local state
+          setReports(reports.map(r => 
+              r.id === schedulingReport.id ? { ...r, status: 'accepted', expected_pickup_time: timestamp } : r
+          ));
+
+          setSchedulingReport(null);
+      } catch (err) {
+          console.error("Error scheduling pickup:", err);
+          alert("Failed to confirm pickup. Please try again.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'accepted'
+
+  const filteredReports = reports.filter(r => {
+      if (activeTab === 'pending') return r.status === 'pending';
+      if (activeTab === 'accepted') return r.status === 'accepted';
+      return true;
+  });
+
   return (
-    <div className="page-container">
-      <div className="flex justify-between items-center mb-8">
-        <h1>Rescuer Feed</h1>
-        <div className="flex gap-2">
+    <div className="page-container relative">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div>
+            <h1>Rescuer Dashboard</h1>
+            <p className="text-muted">Manage your rescue missions</p>
+        </div>
+        
+        <div className="flex bg-slate-100 p-1 rounded-lg">
             <button 
-                className={`btn ${viewMode === 'list' ? 'btn-primary' : 'bg-subtle text-muted hover:bg-slate-200'}`}
+                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-primary' : 'text-muted hover:text-slate-700'}`}
                 onClick={() => setViewMode('list')}
             >
                 List View
             </button>
             <button 
-                className={`btn ${viewMode === 'map' ? 'btn-primary' : 'bg-subtle text-muted hover:bg-slate-200'}`}
+                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-primary' : 'text-muted hover:text-slate-700'}`}
                 onClick={() => setViewMode('map')}
             >
                 Map View
             </button>
         </div>
       </div>
+
+      {/* Status Tabs */}
+      <div className="flex border-b border-border mb-8">
+          <button 
+              onClick={() => setActiveTab('pending')}
+              className={`px-6 py-3 font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'pending' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-slate-700'}`}
+          >
+              <AlertTriangle size={18} />
+              New Requests
+              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs">
+                  {reports.filter(r => r.status === 'pending').length}
+              </span>
+          </button>
+          <button 
+              onClick={() => setActiveTab('accepted')}
+              className={`px-6 py-3 font-semibold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'accepted' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-slate-700'}`}
+          >
+              <CheckCircle size={18} />
+              Scheduled Pickups
+              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs">
+                  {reports.filter(r => r.status === 'accepted').length}
+              </span>
+          </button>
+      </div>
+
+      {/* Scheduling Modal */}
+      {schedulingReport && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl animate-fade-in">
+                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                      <Clock className="text-primary" /> Schedule Pickup
+                  </h3>
+                  <p className="text-muted mb-6">
+                      When will you be able to pick up the animal from <strong>{schedulingReport.location}</strong>?
+                  </p>
+                  
+                  <div className="space-y-4 mb-8">
+                      <div>
+                          <label className="block text-sm font-semibold mb-1">Pickup Date</label>
+                          <input 
+                              type="date" 
+                              className="form-input w-full"
+                              value={pickupDate}
+                              onChange={e => setPickupDate(e.target.value)}
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-semibold mb-1">Estimated Time</label>
+                          <input 
+                              type="time" 
+                              className="form-input w-full"
+                              value={pickupTime}
+                              onChange={e => setPickupTime(e.target.value)}
+                          />
+                      </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                      <button 
+                          onClick={() => setSchedulingReport(null)}
+                          className="btn bg-slate-100 hover:bg-slate-200 text-slate-700"
+                      >
+                          Cancel
+                      </button>
+                      <button 
+                          onClick={confirmPickup}
+                          className="btn btn-primary"
+                      >
+                          Confirm & Notify Citizen
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {loading ? (
           <div className="text-center py-12">
@@ -139,11 +286,23 @@ export default function RescuerFeed() {
           <>
             {viewMode === 'list' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {reports.length === 0 ? (
-                        <div className="col-span-full text-center py-12 text-muted">
-                            <p>No rescue requests assigned to you yet.</p>
+                    {filteredReports.length === 0 ? (
+                        <div className="col-span-full py-16 text-center text-muted bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                            {activeTab === 'pending' ? (
+                                <>
+                                    <CheckCircle size={48} className="mx-auto mb-4 text-green-200" />
+                                    <h3>All caught up!</h3>
+                                    <p>No new rescue requests at the moment.</p>
+                                </>
+                            ) : (
+                                <>
+                                    <Clock size={48} className="mx-auto mb-4 text-slate-200" />
+                                    <h3>No scheduled pickups</h3>
+                                    <p>Accept a request to see it here.</p>
+                                </>
+                            )}
                         </div>
-                    ) : reports.map(report => (
+                    ) : filteredReports.map(report => (
                         <div key={report.id} className="glass-panel p-6 relative overflow-hidden transition-all hover:shadow-lg flex flex-col h-full">
                             {/* Urgency Badge */}
                             <div 
@@ -164,6 +323,11 @@ export default function RescuerFeed() {
                                 
                                 <span className="text-xs text-muted block mb-2">
                                     Reported: {new Date(report.created_at).toLocaleDateString()}
+                                    {report.expected_pickup_time && (
+                                        <div className="mt-1 text-primary font-semibold">
+                                            Pickup: {new Date(report.expected_pickup_time).toLocaleString()}
+                                        </div>
+                                    )}
                                 </span>
 
                                 {report.image_url && (
@@ -201,7 +365,7 @@ export default function RescuerFeed() {
                             {report.status === 'pending' && (
                                 <div className="pl-4 mt-4 pt-4 border-t border-border grid grid-cols-2 gap-3">
                                     <button 
-                                        onClick={() => updateReportStatus(report.id, 'accepted')}
+                                        onClick={() => handleAcceptClick(report)}
                                         className="btn bg-green-500 hover:bg-green-600 text-white text-sm py-2 flex items-center justify-center gap-1"
                                     >
                                         <Check size={16} /> Accept
@@ -221,7 +385,7 @@ export default function RescuerFeed() {
                 <div className="h-[600px] rounded-2xl overflow-hidden shadow-lg border border-border">
                     <MapContainer center={[6.9271, 79.8612]} zoom={11} style={{ height: '100%', width: '100%' }}>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        {reports.filter(r => r.latitude && r.longitude).map(report => (
+                        {filteredReports.filter(r => r.latitude && r.longitude).map(report => (
                             <Marker key={report.id} position={[report.latitude, report.longitude]}>
                                 <Popup>
                                     <div className="min-w-[200px]">
@@ -233,7 +397,7 @@ export default function RescuerFeed() {
                                         {report.status === 'pending' && (
                                             <div className="flex gap-2 mt-2">
                                                 <button 
-                                                    onClick={() => updateReportStatus(report.id, 'accepted')}
+                                                    onClick={() => handleAcceptClick(report)}
                                                     className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
                                                 >
                                                     Accept

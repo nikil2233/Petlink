@@ -12,37 +12,33 @@ export const AuthProvider = ({ children }) => {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Safety Valve: If Supabase doesn't respond in 5 seconds, we force the app to load
-  useEffect(() => {
-     const safetyTimer = setTimeout(() => {
-        if (loading) {
-            console.warn("AuthContext: Supabase initialization timed out. Forcing app load.");
-            setLoading(false);
-            // Auto-recovery: Clear bad state
-            localStorage.clear(); 
-            // Optional: Reload to ensure clean slate if needed, but setState might be enough.
-            // Let's try just clearing first to avoid reload loops.
-        }
-     }, 5000);
-     return () => clearTimeout(safetyTimer);
-  }, [loading]);
+
 
   useEffect(() => {
     // 1. Check active session
     const initAuth = async () => {
+        console.log("AuthContext: initAuth started");
         try {
+            console.log("AuthContext: calling getSession");
             const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+            console.log("AuthContext: getSession result", { currentSession, error });
             if (error) throw error;
             
             if (currentSession) {
+                console.log("AuthContext: Session found, setting user");
                 setSession(currentSession);
                 setUser(currentSession.user);
+                console.log("AuthContext: fetching role");
                 await fetchUserRole(currentSession.user.id);
+                console.log("AuthContext: role fetched");
+            } else {
+                console.log("AuthContext: No session found");
             }
         } catch (error) {
             console.error("AuthContext: Init Error:", error);
             // If error, we just assume logged out
         } finally {
+            console.log("AuthContext: initAuth finally, setting loading false");
             setLoading(false);
         }
     };
@@ -72,22 +68,36 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const fetchUserRole = async (userId) => {
+      console.log("AuthContext: fetchUserRole start for", userId);
       try {
-          const { data, error } = await supabase
+          // Timeout promise
+          const timeoutPromise = new Promise((_, reject) => 
+               setTimeout(() => reject(new Error("Request timed out")), 5000)
+          );
+          
+          const dbPromise = supabase
               .from('profiles')
               .select('role')
               .eq('id', userId)
-              .maybeSingle(); // Safe fetch
+              .maybeSingle();
+
+          console.log("AuthContext: awaiting db response...");
+          const { data, error } = await Promise.race([dbPromise, timeoutPromise]);
           
+          if (error) throw error;
+          
+          console.log("AuthContext: profile data received", data);
           if (data) {
               setRole(data.role);
           } else {
+              console.warn("AuthContext: No profile found for user, defaulting to 'user'");
               setRole('user'); // Default
           }
       } catch (err) {
           console.error("Error fetching role:", err);
           setRole('user');
       }
+      console.log("AuthContext: fetchUserRole end");
   };
 
   const signOut = async () => {

@@ -37,13 +37,13 @@ export default function Navbar() {
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
-        .eq('is_read', false)
+        .eq('read', false)
         .order('created_at', { ascending: false });
       setNotifications(data || []);
   };
 
   const markAsRead = async (id) => {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+      await supabase.from('notifications').update({ read: true }).eq('id', id);
       setNotifications(prev => prev.filter(n => n.id !== id));
   };
 

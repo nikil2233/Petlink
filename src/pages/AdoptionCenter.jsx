@@ -66,6 +66,7 @@ export default function AdoptionCenter() {
       const { data, error } = await supabase
         .from('adoptions')
         .select('*')
+        .eq('status', 'available') // Only show available pets
         .order('created_at', { ascending: false });
         
       if (error) {

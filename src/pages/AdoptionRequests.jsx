@@ -1,67 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Check, X, Clock, HelpCircle, User, Phone, MapPin, Home, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Check, X, Clock, ChevronDown, ChevronUp, User, MapPin } from 'lucide-react';
 
 export default function AdoptionRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('pending'); // 'pending', 'approved', 'rejected', 'all'
-
-  const [userRole, setUserRole] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    checkAccessAndFetch();
+    fetchRequests();
   }, []);
 
-  const checkAccessAndFetch = async () => {
+  const fetchRequests = async () => {
+    try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-          window.location.href = '/auth';
-          return;
+        navigate('/auth');
+        return;
       }
 
-      // Check Role
-      const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
+      // Fetch requests for pets posted by the current user
+      // We need to join with adoptions to filter by posted_by = user.id
+      // Supabase join syntax: adoption_requests(..., adoptions!inner(...))
       
-      if (profile) {
-          if (!['rescuer', 'shelter', 'vet'].includes(profile.role)) {
-              alert("Access Denied: Specialized Account Required.");
-              window.location.href = '/';
-              return;
-          }
-          setUserRole(profile.role);
-          fetchRequests(session.user);
-      }
-  };
-
-  const fetchRequests = async (user) => {
-    try {
-      setLoading(true);
-      if (!user) return;
-
-      // 1. Fetch requests for pets posted by THIS user
-      // We need to join with adoptions to check posted_by, and profiles to get requester info
       const { data, error } = await supabase
         .from('adoption_requests')
         .select(`
-          *,
-          adoptions!inner (
-            name,
-            image_url,
-            species,
-            posted_by
-          ),
-          profiles:requester_id (
-            full_name,
-            email,
-            avatar_url
-          )
+            *,
+            adoptions!inner (
+                id,
+                name,
+                image_url,
+                species,
+                posted_by
+            ),
+            profiles:requester_id (
+                full_name,
+                email,
+                avatar_url
+            )
         `)
-        .eq('adoptions.posted_by', user.id)
+        .eq('adoptions.posted_by', session.user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -73,169 +54,294 @@ export default function AdoptionRequests() {
     }
   };
 
-  const updateStatus = async (requestId, newStatus) => {
+  // Scheduling Logic
+  const [processingRequest, setProcessingRequest] = useState(null); // The request being "approved"
+  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingTime, setMeetingTime] = useState('');
+  const [instructions, setInstructions] = useState('');
+
+  const handleApproveClick = (request) => {
+      setProcessingRequest(request);
+      // Default tomorrow 10am
+      const tmr = new Date();
+      tmr.setDate(tmr.getDate() + 1);
+      setMeetingDate(tmr.toISOString().split('T')[0]);
+      setMeetingTime('10:00');
+      setInstructions('Please bring a valid ID and a pet carrier.');
+  };
+
+  const confirmApproval = async () => {
+    if (!meetingDate || !meetingTime) {
+        alert("Please select a date and time for the adoption meeting.");
+        return;
+    }
+
     try {
-      const { error } = await supabase
-        .from('adoption_requests')
-        .update({ status: newStatus })
-        .eq('id', requestId);
+        const timestamp = new Date(`${meetingDate}T${meetingTime}`).toISOString();
+        const requestId = processingRequest.id;
 
-      if (error) throw error;
-      
-      // Update local state
-      setRequests(requests.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
+        // 1. Update Request
+        const { error: updateError } = await supabase
+            .from('adoption_requests')
+            .update({ 
+                status: 'approved',
+                meeting_datetime: timestamp,
+                meeting_instructions: instructions
+            })
+            .eq('id', requestId);
 
-      // NOTIFY THE CITIZEN
-      const request = requests.find(r => r.id === requestId);
-      if (request) {
-          const message = newStatus === 'approved' 
-              ? `Good news! Your adoption request for ${request.adoptions.name} has been APPROVED! The rescuer will contact you.`
-              : `Update: Your adoption request for ${request.adoptions.name} was ${newStatus}.`;
-          
-          await supabase.from('notifications').insert([{
-              user_id: request.requester_id,
-              type: 'adoption_request',
-              message: message,
-              metadata: { request_id: requestId, adoption_id: request.adoption_id }
-          }]);
-      }
+        if (updateError) throw updateError;
+        
+        // 2. Mark Pet as Adopted
+        // This hides it from the main feed (if filtered correctly)
+        const { error: adoptionError } = await supabase
+            .from('adoptions')
+            .update({ status: 'adopted' })
+            .eq('id', processingRequest.adoptions.id);
+
+        if (adoptionError) { 
+             console.error("Error updating adoption status", adoptionError);
+             // Verify if we want to throw or just log? Let's log but continue notification.
+        }
+
+        // 3. Notify User
+        const { error: notifyError } = await supabase
+            .from('notifications')
+            .insert([{
+                user_id: processingRequest.requester_id,
+                type: 'adoption_update',
+                message: `Congratulations! Your adoption application for ${processingRequest.adoptions.name} has been APPROVED! Meeting scheduled for ${meetingDate} at ${meetingTime}.`,
+                metadata: { request_id: requestId }
+            }]);
+        
+        if (notifyError) console.error("Notify Error", notifyError);
+        
+        // Update local state
+        setRequests(requests.map(r => 
+            r.id === requestId ? { ...r, status: 'approved', meeting_datetime: timestamp, meeting_instructions: instructions } : r
+        ));
+        
+        setProcessingRequest(null);
+        alert("Application approved and applicant notified!");
 
     } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Failed to update status');
+        console.error('Error updating status:', error);
+        alert('Failed to update status');
     }
   };
 
-  const filteredRequests = requests.filter(r => {
-    if (filter === 'all') return true;
-    return r.status === filter;
-  });
+  // Reject logic remains simple
+  const handleReject = async (requestId) => {
+      if(!window.confirm("Are you sure you want to reject this application?")) return;
+      try {
+          const { error } = await supabase
+            .from('adoption_requests')
+            .update({ status: 'rejected' })
+            .eq('id', requestId);
+
+          if (error) throw error;
+
+          setRequests(requests.map(r => r.id === requestId ? { ...r, status: 'rejected' } : r));
+      } catch (e) {
+          console.error(e);
+          alert("Failed to reject");
+      }
+  };
+
+  if (loading) return <div className="page-container text-center py-20">Loading requests...</div>;
 
   return (
-    <div className="page-container flex flex-col gap-8">
-      <div className="mb-2">
-        <h1 className="text-3xl font-bold mb-2">Adoption Requests</h1>
-        <p className="text-muted">Manage applications for your listed pets.</p>
-      </div>
+    <div className="page-container relative">
+      <h1 className="mb-8">Adoption Applications</h1>
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-border pb-1 overflow-x-auto">
-        {['pending', 'approved', 'rejected', 'all'].map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-6 py-2 border-b-2 transition-colors font-medium text-lg capitalize whitespace-nowrap ${
-                filter === f 
-                    ? 'border-primary text-primary' 
-                    : 'border-transparent text-muted hover:text-foreground'
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12 text-muted">Loading requests...</div>
-      ) : filteredRequests.length === 0 ? (
-        <div className="text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-          <p className="text-muted">No {filter} requests found.</p>
-        </div>
-      ) : (
-        <div className="grid gap-6">
-          {filteredRequests.map(request => (
-            <div key={request.id} className="glass-panel !p-0 grid grid-cols-1 md:grid-cols-[280px_1fr] overflow-hidden">
-              
-              {/* Left Column: Pet & Status */}
-              <div className="bg-slate-50 p-6 border-b md:border-b-0 md:border-r border-border flex flex-col items-center text-center">
-                 <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-white shadow-md">
-                    <img src={request.adoptions.image_url} alt={request.adoptions.name} className="w-full h-full object-cover" />
-                 </div>
-                 <h3 className="text-xl font-bold mb-1">{request.adoptions.name}</h3>
-                 <span className="text-sm text-muted mb-6 uppercase tracking-wider">{request.adoptions.species}</span>
-                 
-                 <div className="mt-auto w-full">
-                    <div className={`
-                        py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2
-                        ${request.status === 'pending' ? 'bg-orange-50 text-orange-700' : ''}
-                        ${request.status === 'approved' ? 'bg-green-50 text-green-700' : ''}
-                        ${request.status === 'rejected' ? 'bg-red-50 text-red-700' : ''}
-                    `}>
-                        {request.status === 'pending' && <Clock size={18} />}
-                        {request.status === 'approved' && <Check size={18} />}
-                        {request.status === 'rejected' && <X size={18} />}
-                        <span className="capitalize">{request.status}</span>
-                    </div>
-                 </div>
-              </div>
-
-              {/* Right Column: Applicant Details */}
-              <div className="p-6 md:p-8">
-                 <div className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
-                    <div className="flex gap-4 items-center">
-                        <div className="w-14 h-14 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                            {request.profiles?.avatar_url ? (
-                                <img src={request.profiles.avatar_url} alt={request.profiles.full_name} className="w-full h-full object-cover" />
-                            ) : (
-                                <User size={28} className="text-slate-400" />
-                            )}
+      {/* Scheduling Modal */}
+      {processingRequest && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl animate-fade-in">
+                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                      <Clock className="text-primary" /> Schedule Adoption Meeting
+                  </h3>
+                  <p className="text-muted mb-6">
+                      Great news! You are approving <strong>{processingRequest.profiles?.full_name}</strong> to adopt <strong>{processingRequest.adoptions.name}</strong>.
+                      <br/>
+                      Please set a meeting time for them to pick up the pet or visit.
+                  </p>
+                  
+                  <div className="space-y-4 mb-8">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold mb-1">Date</label>
+                            <input 
+                                type="date" 
+                                className="form-input w-full"
+                                value={meetingDate}
+                                onChange={e => setMeetingDate(e.target.value)}
+                            />
                         </div>
                         <div>
-                            <h4 className="text-lg font-bold m-0 text-gray-900">{request.profiles?.full_name || 'Anonymous User'}</h4>
-                            <p className="text-sm text-muted m-0">{request.profiles?.email}</p>
+                            <label className="block text-sm font-semibold mb-1">Time</label>
+                            <input 
+                                type="time" 
+                                className="form-input w-full"
+                                value={meetingTime}
+                                onChange={e => setMeetingTime(e.target.value)}
+                            />
+                        </div>
+                      </div>
+                      
+                      <div>
+                          <label className="block text-sm font-semibold mb-1">Instructions / Message</label>
+                          <textarea 
+                              className="form-textarea w-full"
+                              rows="3"
+                              value={instructions}
+                              onChange={e => setInstructions(e.target.value)}
+                              placeholder="e.g. Please bring your ID, a leash, and the adoption fee..."
+                          />
+                      </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                      <button 
+                          onClick={() => setProcessingRequest(null)}
+                          className="btn bg-slate-100 hover:bg-slate-200 text-slate-700"
+                      >
+                          Cancel
+                      </button>
+                      <button 
+                          onClick={confirmApproval}
+                          className="btn btn-primary"
+                      >
+                          Confirm Approval & Notify
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {requests.length === 0 ? (
+        <div className="glass-panel text-center py-16">
+            <FileText size={48} className="mx-auto mb-4 text-muted" />
+            <h3>No Applications Yet</h3>
+            <p className="text-muted">When users apply to adopt your pets, they will appear here.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+            {requests.map(req => (
+                <div key={req.id} className="glass-panel p-0 overflow-hidden transition-all">
+                    {/* Header Row */}
+                    <div 
+                        className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50"
+                        onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-slate-200 rounded-lg overflow-hidden shrink-0">
+                                {req.adoptions.image_url ? (
+                                    <img src={req.adoptions.image_url} className="w-full h-full object-cover" alt="Pet" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted">PET</div>
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold m-0">{req.adoptions.name}</h3>
+                                <p className="text-sm text-muted m-0">Applicant: {req.profiles?.full_name || 'Unknown'}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                             <div className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                                req.status === 'pending' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                                req.status === 'approved' ? 'bg-green-100 text-green-700 border-green-200' :
+                                'bg-red-100 text-red-700 border-red-200'
+                            }`}>
+                                {req.status === 'approved' ? 'SCHEDULED' : req.status.toUpperCase()}
+                            </div>
+                            {expandedId === req.id ? <ChevronUp size={20} className="text-muted" /> : <ChevronDown size={20} className="text-muted" />}
                         </div>
                     </div>
-                    <div className="text-xs font-semibold text-muted bg-slate-100 px-3 py-1 rounded-full whitespace-nowrap">
-                        Applied on {new Date(request.created_at).toLocaleDateString()}
-                    </div>
-                 </div>
 
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-                    <div>
-                        <p className="text-xs text-muted font-bold uppercase mb-1 flex items-center gap-1"><Phone size={12} /> Phone</p>
-                        <p className="font-semibold">{request.phone}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-muted font-bold uppercase mb-1 flex items-center gap-1"><MapPin size={12} /> Address</p>
-                        <p className="font-semibold">{request.address}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-muted font-bold uppercase mb-1 flex items-center gap-1"><Home size={12} /> Living Situation</p>
-                        <p className="font-semibold">{request.living_situation} {request.has_other_pets && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded ml-2">Has Pets</span>}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-muted font-bold uppercase mb-1 flex items-center gap-1"><HelpCircle size={12} /> Experience</p>
-                        <p className="font-semibold">{request.experience}</p>
-                    </div>
-                 </div>
+                    {/* Expanded Details */}
+                    {expandedId === req.id && (
+                        <div className="p-6 border-t border-border bg-subtle/30 animate-fade-in">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <h4 className="flex items-center gap-2 mb-4 text-primary"><User size={18} /> Applicant Details</h4>
+                                    <div className="space-y-3 text-sm">
+                                        <div className="flex justify-between border-b border-border/50 pb-2">
+                                            <span className="text-muted">Full Name</span>
+                                            <span className="font-semibold">{req.profiles?.full_name}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-border/50 pb-2">
+                                            <span className="text-muted">Email</span>
+                                            <span className="font-semibold">{req.profiles?.email}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-border/50 pb-2">
+                                            <span className="text-muted">Phone</span>
+                                            <span className="font-semibold">{req.phone}</span>
+                                        </div>
+                                        <div className="flex justify-between border-b border-border/50 pb-2">
+                                            <span className="text-muted">Location</span>
+                                            <span className="font-semibold">{req.address}</span>
+                                        </div>
+                                    </div>
+                                </div>
 
-                 <div className="bg-slate-50 p-6 rounded-xl border border-border">
-                    <p className="text-xs text-muted font-bold uppercase mb-2 flex items-center gap-1"><MessageSquare size={12} /> Message from applicant</p>
-                    <div className="text-sm leading-relaxed italic text-gray-700">
-                        "{request.message}"
-                    </div>
-                 </div>
+                                <div>
+                                    <h4 className="flex items-center gap-2 mb-4 text-primary"><FileText size={18} /> Application Answers</h4>
+                                    <div className="space-y-4 text-sm">
+                                        <div>
+                                            <p className="text-muted mb-1 text-xs uppercase tracking-wider font-bold">Living Situation</p>
+                                            <p className="font-medium bg-white p-2 rounded border border-border">{req.living_situation}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted mb-1 text-xs uppercase tracking-wider font-bold">Experience / Pets</p>
+                                            <p className="font-medium bg-white p-2 rounded border border-border">
+                                                {req.has_other_pets ? 'Has other pets. ' : 'No other pets. '} 
+                                                {req.experience}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted mb-1 text-xs uppercase tracking-wider font-bold">Message</p>
+                                            <p className="font-medium bg-white p-2 rounded border border-border italic">"{req.message}"</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                 {/* Actions */}
-                 {request.status === 'pending' && (
-                     <div className="flex gap-4 mt-8 pt-6 border-t border-border">
-                         <button 
-                            onClick={() => updateStatus(request.id, 'approved')}
-                            className="btn bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-none flex-1 justify-center" 
-                         >
-                            <Check size={18} /> Approve Adoption
-                         </button>
-                         <button 
-                            onClick={() => updateStatus(request.id, 'rejected')}
-                            className="btn bg-rose-100 text-rose-800 hover:bg-rose-200 border-none flex-1 justify-center" 
-                         >
-                             <X size={18} /> Reject
-                         </button>
-                     </div>
-                 )}
-              </div>
-            </div>
-          ))}
+                            {/* Show Scheduled Info if Approved */}
+                            {req.status === 'approved' && req.meeting_datetime && (
+                                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                    <h4 className="text-green-800 flex items-center gap-2 mb-2">
+                                        <Check size={18} /> Meeting Scheduled
+                                    </h4>
+                                    <p className="text-green-700 text-sm">
+                                        <strong>When:</strong> {new Date(req.meeting_datetime).toLocaleString()}
+                                        <br/>
+                                        <strong>Instructions:</strong> {req.meeting_instructions || 'None'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {req.status === 'pending' && (
+                                <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-border">
+                                    <button 
+                                        onClick={() => handleReject(req.id)}
+                                        className="btn bg-white border border-danger text-danger hover:bg-red-50"
+                                    >
+                                        <X size={18} /> Reject
+                                    </button>
+                                    <button 
+                                        onClick={() => handleApproveClick(req)}
+                                        className="btn btn-primary"
+                                    >
+                                        <Check size={18} /> Approve Application
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            ))}
         </div>
       )}
     </div>

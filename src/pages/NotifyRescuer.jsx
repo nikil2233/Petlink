@@ -4,16 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, Camera, AlertCircle, Send, X, Shield } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 
+import { useAuth } from '../context/AuthContext';
+
 export default function NotifyRescuer() {
   const navigate = useNavigate();
-  const [session, setSession] = useState(null);
+  const { session, role: userRole, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   
-  // Access Control
-  const [userRole, setUserRole] = useState(null);
-  const [isCheckingRole, setIsCheckingRole] = useState(true);
-
   // Data
   const [rescuers, setRescuers] = useState([]);
 
@@ -27,43 +25,10 @@ export default function NotifyRescuer() {
   const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
-    // Failsafe
-    const timeout = setTimeout(() => {
-        setIsCheckingRole(false);
-    }, 8000);
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-          fetchUserRole(session.user.id);
-          fetchRescuers();
-      } else {
-          setIsCheckingRole(false);
-      }
-    }).catch(err => {
-        console.error("Session check failed", err);
-        setIsCheckingRole(false);
-    }).finally(() => {
-        clearTimeout(timeout);
-    });
-  }, []);
-
-  const fetchUserRole = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-      
-      if (error) throw error;
-      if (data) setUserRole(data.role);
-    } catch (error) {
-      console.error('Error fetching user role:', error);
-    } finally {
-      setIsCheckingRole(false);
+    if (session) {
+        fetchRescuers();
     }
-  };
+  }, [session]);
 
   const fetchRescuers = async () => {
       try {
@@ -117,9 +82,9 @@ export default function NotifyRescuer() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!session) {
-      navigate('/auth');
-      return;
+    if (!session || !session.user) {
+        setMsg({ type: 'error', text: 'You must be logged in.' });
+        return;
     }
 
     if (!coords && !locationName) {
@@ -134,19 +99,32 @@ export default function NotifyRescuer() {
 
     setLoading(true);
     setMsg(null);
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+        // 0. ENSURE PROFILE EXISTS
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert(
+                { id: session.user.id, email: session.user.email },
+                { onConflict: 'id', ignoreDuplicates: true }
+            );
+        
+        if (profileError) {
+             console.warn("Could not ensure profile exists:", profileError);
+        }
 
-      let finalImageUrl = null;
-      if (imageFile) {
-          finalImageUrl = await uploadImage(imageFile);
-      }
+        // 1. Upload Image (if any)
+        let finalImageUrl = null;
+        if (imageFile) {
+            finalImageUrl = await uploadImage(imageFile);
+        }
 
-      const { error } = await supabase
+        // 2. Submit Report
+        const { error } = await supabase
         .from('reports')
         .insert([
           {
-            user_id: user.id,
+            user_id: session.user.id,
             description,
             location: locationName, 
             latitude: coords ? coords.lat : null,
@@ -175,7 +153,7 @@ export default function NotifyRescuer() {
     }
   };
 
-  if (isCheckingRole) {
+  if (authLoading) {
     return (
       <div className="page-container flex items-center justify-center">
         <div className="p-8">
