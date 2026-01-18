@@ -37,7 +37,7 @@ export default function AdoptionCenter() {
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       if (data) setUserRole(data.role);
@@ -109,129 +109,141 @@ export default function AdoptionCenter() {
   });
 
   return (
-    <div className="page-container">
-      {/* Top Bar */}
-      <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
-        <div>
-          <h1 className="flex items-center gap-3">
-             Adoption Center 
-             {showWishlistOnly && (
-                <span className="text-base bg-pink-100 text-pink-700 px-3 py-1 rounded-full border border-pink-200">
-                    Wishlist
-                </span>
-             )}
-          </h1>
-          <p className="text-muted mt-2">Find your new best friend or list a pet in need.</p>
-        </div>
-
-        <div className="flex gap-4">
-           {session && (
-               <>
-                 <button 
-                    onClick={() => setShowWishlistOnly(!showWishlistOnly)}
-                    className={`btn ${showWishlistOnly ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-white border-border text-muted hover:bg-slate-50'}`}
-                 >
-                    <Heart size={18} fill={showWishlistOnly ? 'currentColor' : 'none'} /> Wishlist
-                 </button>
-                 {['rescuer', 'shelter', 'vet'].includes(userRole) && (
-                   <button 
-                      className="btn btn-primary"
-                      onClick={() => setShowCreateModal(true)}
-                   >
-                      <Plus size={18} /> List a Pet
-                   </button>
-                 )}
-               </>
-           )}
-        </div>
-      </div>
-
-      {/* Filters Bar */}
-      <div className="glass-panel p-4 mb-8 flex flex-wrap gap-6 items-center">
-          <div className="flex-1 min-w-[200px] flex items-center gap-3 relative">
-              <Search size={18} className="text-muted absolute left-3" />
-              <input 
-                type="text" 
-                placeholder="Search by name or breed..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="form-input pl-10 border-none bg-transparent shadow-none focus:ring-0"
-              />
-          </div>
-          <div className="h-6 w-px bg-border hidden md:block"></div>
-          <div className="flex gap-2 bg-subtle p-1 rounded-lg">
-             {['all', 'dog', 'cat'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type)}
-                  className={`px-4 py-2 rounded-md transition-all text-sm font-semibold capitalize ${
-                    filterType === type 
-                        ? 'bg-white shadow text-primary' 
-                        : 'text-muted hover:text-foreground'
-                  }`}
-                >
-                  {type}
-                </button>
-             ))}
-          </div>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-16">
-            <p className="text-xl text-muted">Loading friends...</p>
-        </div>
-      ) : filteredAnimals.length === 0 ? (
-        <div className="text-center py-16 opacity-70">
-          <PawPrint size={64} className="mx-auto mb-4 text-muted" />
-          <h3 className="text-xl font-semibold mb-2">No animals found</h3>
-          <p className="text-muted">Try adjusting your search or filters.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {filteredAnimals.map(animal => (
-            <div 
-                key={animal.id} 
-                className="glass-panel overflow-hidden flex flex-col cursor-pointer transition-transform hover:-translate-y-1 group relative"
-                onClick={() => setSelectedAnimal(animal)}
-            >
-              <div className="h-64 relative bg-slate-700 overflow-hidden">
-                 <img 
-                   src={animal.image_url || `https://source.unsplash.com/400x300/?${animal.species}`} 
-                   alt={animal.name}
-                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                 />
-                 <button 
-                    onClick={(e) => toggleWishlist(e, animal.id)}
-                    className={`absolute top-3 right-3 bg-white/80 hover:bg-white rounded-full w-8 h-8 flex items-center justify-center transition-colors shadow-sm ${wishlist.has(animal.id) ? 'text-red-500' : 'text-slate-500'}`}
-                 >
-                    <Heart size={18} fill={wishlist.has(animal.id) ? 'currentColor' : 'none'} />
-                 </button>
-                 <div className="absolute bottom-3 left-3 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 backdrop-blur-sm">
-                    <MapPin size={12} /> {animal.location || 'Unknown'}
-                 </div>
-              </div>
-
-              <div className="p-5 flex flex-col flex-1">
-                  <div className="flex justify-between items-baseline mb-2">
-                     <h3 className="text-xl font-bold m-0 text-foreground">{animal.name}</h3>
-                    <span className="text-sm font-bold text-primary">
-                      {animal.age_years > 0 ? `${animal.age_years} yrs ` : ''}
-                      {animal.age_months > 0 ? `${animal.age_months} mos` : ''}
-                      {(!animal.age_years && !animal.age_months) ? 'Age N/A' : ''}
-                    </span>
-                  </div>
-                  <p className="text-muted text-sm mb-4">{animal.breed}</p>
-                  
-                  <div className="flex flex-wrap gap-2 mt-auto">
-                      {animal.vaccinated && <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-semibold">Vaccinated</span>}
-                      {animal.neutered && <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-semibold">Neutered</span>}
-                      {animal.good_with_kids && <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-semibold">Kid Friendly</span>}
-                  </div>
-              </div>
+    <div className="page-container" style={{ background: '#f8fafc', minHeight: '100vh', paddingTop: '7rem' }}>
+      <div className="container mx-auto px-4">
+        
+        {/* Top Header - Hero Card */}
+        <div className="relative w-full rounded-[40px] overflow-hidden shadow-sm border border-slate-100 bg-gradient-to-r from-gray-50 to-white flex items-center" style={{ minHeight: '450px' }}>
+            
+            {/* Background Image - Absolute Right */}
+            <div className="absolute right-0 top-0 h-full w-[60%] pointer-events-none">
+                <img 
+                    src="https://images.unsplash.com/photo-1623387641168-d9803ddd3f35?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80" 
+                    alt="Golden Retriever Puppy and Ginger Kitten" 
+                    className="w-full h-full object-cover object-center mix-blend-multiply opacity-90" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-gray-50 via-white/20 to-transparent"></div>
             </div>
-          ))}
+
+            {/* Content Container - Grid System to prevent overlap */}
+            <div className="container mx-auto px-6 lg:px-12 relative z-10 w-full h-full flex flex-col md:flex-row items-center">
+                
+                {/* Left Text Column */}
+                <div className="w-full md:w-1/2 pt-10 md:pt-0">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100/80 text-orange-700 text-xs font-bold mb-6 border border-orange-200">
+                        <PawPrint size={12} /> #1 Pet Adoption Platform
+                    </div>
+                    <h1 className="text-5xl md:text-7xl font-[900] text-[#1a202c] leading-[1.1] tracking-tight mb-6">
+                        Find Your New <br/>
+                        Best Friend
+                    </h1>
+                    <p className="text-lg md:text-xl text-slate-500 font-medium max-w-md leading-relaxed mb-8">
+                        Every pet deserves a second chance. <br/> Open your heart and home today.
+                    </p>
+                    <button 
+                        onClick={() => setShowCreateModal(true)}
+                        className="bg-slate-900 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center gap-3 group">
+                        Get Started 
+                        <div className="bg-white/20 rounded-full p-1 group-hover:bg-white/30 transition-colors">
+                            <Plus size={18}/>
+                        </div>
+                    </button>
+                </div>
+
+
+            </div>
         </div>
-      )}
+
+        {/* Search Bar - Stable Flex Layout with Explicit Styles */}
+        <div className="max-w-3xl mx-auto mb-20 relative z-30 -mt-12">
+            <div className="bg-white rounded-full shadow-2xl p-3 flex items-center border border-slate-100" style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)' }}>
+                <div className="pl-6 md:pl-8 text-slate-400">
+                    <Search size={28} strokeWidth={2.5} />
+                </div>
+                <input 
+                    type="text"
+                    placeholder="Search by name, breed, or location..."
+                    className="flex-1 bg-transparent border-none outline-none text-xl text-slate-700 placeholder:text-slate-400 font-semibold px-6 py-4"
+                    style={{ background: 'transparent', border: 'none', outline: 'none' }}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <button 
+                    className="bg-[#FF9F1C] hover:bg-[#F9A826] text-white px-8 md:px-10 py-4 rounded-full font-bold text-lg shadow-lg transition-transform active:scale-95 flex items-center justify-center"
+                >
+                    Filter
+                </button>
+            </div>
+        </div>
+
+        {/* Category Circles - Fixed Layout */}
+        <div className="flex flex-wrap justify-center gap-6 md:gap-14 mb-20 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <CategoryCircle 
+                icon={<PawPrint size={24} />} // Slightly smaller icon inside big circle
+                label="All" 
+                active={filterType === 'all'} 
+                onClick={() => setFilterType('all')} 
+            />
+            <CategoryCircle 
+                icon={<span className="text-3xl">🐶</span>} 
+                label="Dogs" 
+                active={filterType === 'dog'} 
+                onClick={() => setFilterType('dog')} 
+            />
+            <CategoryCircle 
+                icon={<span className="text-3xl">🐱</span>} 
+                label="Cats" 
+                active={filterType === 'cat'} 
+                onClick={() => setFilterType('cat')} 
+            />
+             {/* Wishlist */}
+             <CategoryCircle 
+                icon={<Heart size={24} className={showWishlistOnly ? "fill-current" : ""} />} 
+                label="Wishlist" 
+                active={showWishlistOnly} 
+                onClick={() => setShowWishlistOnly(!showWishlistOnly)} 
+                colorClass="text-pink-500"
+            />
+        </div>
+
+        {/* List a Pet Button - Fixed Position */}
+        {session && ['rescuer', 'shelter', 'vet'].includes(userRole) && (
+            <div className="flex justify-end mb-8 px-4">
+                 <button 
+                    className="btn btn-primary shadow-xl hover:scale-105"
+                    onClick={() => setShowCreateModal(true)}
+                >
+                    <Plus size={20} /> List a Pet
+                </button>
+            </div>
+        )}
+
+        {/* Pet Cards Grid */}
+        {loading ? (
+             <div className="text-center py-20">
+                <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-slate-500 font-medium">Loading tails...</p>
+             </div>
+        ) : filteredAnimals.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-slate-100">
+                <PawPrint size={64} className="mx-auto mb-4 text-slate-200" />
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">No pets found</h3>
+                <p className="text-slate-500">Try adjusting your filters to find a furry friend.</p>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {filteredAnimals.map(animal => (
+                    <PetCard 
+                        key={animal.id} 
+                        animal={animal} 
+                        isWishlisted={wishlist.has(animal.id)}
+                        onToggleWishlist={(e) => toggleWishlist(e, animal.id)}
+                        onClick={() => setSelectedAnimal(animal)}
+                    />
+                ))}
+            </div>
+        )}
+      </div>
 
       {/* Modals */}
       <CreateAdoptionModal 
@@ -249,4 +261,80 @@ export default function AdoptionCenter() {
       />
     </div>
   );
+}
+
+// Subcomponents for cleaner code
+function CategoryCircle({ icon, label, active, onClick, colorClass = "text-slate-700" }) {
+    return (
+        <button 
+            onClick={onClick}
+            className={`flex flex-col items-center gap-2 group transition-all duration-300 ${active ? '-translate-y-1' : 'hover:-translate-y-1'}`}
+        >
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-md transition-all duration-300 border-2 ${active ? 'bg-orange-50 border-orange-500 text-orange-600' : 'bg-white border-slate-100 group-hover:border-orange-200 text-slate-400'}`}>
+                <div className={active ? 'text-orange-600' : ''}>
+                    {icon}
+                </div>
+            </div>
+            {/* Label excluded in new design or kept small? Image had it. Keeping it small/bold. */}
+        </button>
+    )
+}
+
+function PetCard({ animal, isWishlisted, onToggleWishlist, onClick }) {
+    return (
+        <div 
+            onClick={onClick}
+            className="bg-white rounded-[2rem] p-3 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer group hover:-translate-y-2 border border-slate-100"
+        >
+            {/* Image Container */}
+            <div className="relative h-64 rounded-[1.5rem] overflow-hidden mb-4 bg-slate-100">
+                <img 
+                    src={animal.image_url || `https://source.unsplash.com/400x300/?${animal.species}`} 
+                    alt={animal.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                
+                {/* Wishlist Heart */}
+                <button 
+                    onClick={onToggleWishlist}
+                    className="absolute top-4 right-4 bg-white/30 backdrop-blur-md p-2.5 rounded-full hover:bg-white transition-all shadow-sm"
+                >
+                    <Heart 
+                        size={20} 
+                        className={`transition-colors ${isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-white hover:text-rose-500'}`} 
+                    />
+                </button>
+
+                {/* New Badge (Logic: Created in last 7 days) */}
+                <div className="absolute top-4 left-4 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                    New
+                </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-2 pb-2">
+                <div className="flex justify-between items-start mb-1">
+                    <h3 className="text-2xl font-bold text-slate-800">{animal.name}</h3>
+                    <div className="flex gap-2">
+                        {/* Gender Pill */}
+                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-bold text-white ${animal.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'}`}>
+                            {animal.gender === 'Male' ? 'M' : 'F'}
+                        </span>
+                    </div>
+                </div>
+                
+                <p className="text-slate-500 font-medium mb-4">{animal.breed}</p>
+
+                <div className="flex items-center justify-between mt-auto">
+                    <div className="text-slate-400 text-sm font-semibold flex items-center gap-1">
+                        <MapPin size={14} /> {animal.location || 'Colombo'}
+                    </div>
+
+                    <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                        {animal.species}
+                    </span>
+                </div>
+            </div>
+        </div>
+    )
 }

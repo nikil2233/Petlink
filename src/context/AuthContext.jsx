@@ -28,9 +28,8 @@ export const AuthProvider = ({ children }) => {
                 console.log("AuthContext: Session found, setting user");
                 setSession(currentSession);
                 setUser(currentSession.user);
-                console.log("AuthContext: fetching role");
-                await fetchUserRole(currentSession.user.id);
-                console.log("AuthContext: role fetched");
+                console.log("AuthContext: fetching role (background)");
+                fetchUserRole(currentSession.user.id);
             } else {
                 console.log("AuthContext: No session found");
             }
@@ -57,7 +56,7 @@ export const AuthProvider = ({ children }) => {
         } else if (currentSession) {
             setSession(currentSession);
             setUser(currentSession.user);
-            await fetchUserRole(currentSession.user.id);
+            fetchUserRole(currentSession.user.id);
             setLoading(false);
         }
     });
@@ -72,7 +71,7 @@ export const AuthProvider = ({ children }) => {
       try {
           // Timeout promise
           const timeoutPromise = new Promise((_, reject) => 
-               setTimeout(() => reject(new Error("Request timed out")), 5000)
+               setTimeout(() => reject(new Error("Request timed out")), 20000)
           );
           
           const dbPromise = supabase

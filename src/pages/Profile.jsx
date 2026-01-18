@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { User, MapPin, Mail, Save, Building, Stethoscope, HeartHandshake, Camera, FileText, Target, Lock, Shield } from 'lucide-react';
+import { 
+    User, MapPin, Mail, Save, Building, Stethoscope, 
+    HeartHandshake, Camera, FileText, Target, Lock, Shield, 
+    CheckCircle, AlertCircle, Edit2 
+} from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 
 export default function Profile() {
@@ -15,6 +19,7 @@ export default function Profile() {
   const [avatarPreview, setAvatarPreview] = useState(null);
   
   // Password Update State
+  const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwdMsg, setPwdMsg] = useState(null);
@@ -33,11 +38,11 @@ export default function Profile() {
   }, [navigate]);
 
   const fetchProfile = async (userId, currentSession) => {
-    // Failsafe: Stop loading after 10 seconds if it hangs
+    // Failsafe: Stop loading after 20 seconds if it hangs
     const timeoutId = setTimeout(() => {
         setLoading(false);
         setError("Request timed out. Please check your connection.");
-    }, 10000);
+    }, 20000);
 
     try {
       setLoading(true);
@@ -57,15 +62,15 @@ export default function Profile() {
             setAvatarPreview(data.avatar_url);
           }
       } else {
-          // No profile found, initialize default for creation
+          // No profile found, initialize default
           console.warn("Profile not found, initializing default.");
           setProfile({
               id: userId,
-              role: 'user', // Default, user can probably not change this easily here but let's see
+              role: 'user', 
               email: currentSession.user.email,
               full_name: '',
               about: '',
-              location: '',
+              city: '',
               address: ''
           });
       }
@@ -98,13 +103,13 @@ export default function Profile() {
     
     let bucket = 'avatars';
     
+    // Attempt upload
     const { error: uploadError } = await supabase.storage
       .from(bucket)
       .upload(filePath, file, { upsert: true });
 
     if (uploadError) {
-       console.warn("Upload to 'avatars' failed, using default bucket?");
-       // Fallback or just throw
+       console.warn("Upload to 'avatars' failed", uploadError);
     }
 
     const { data: { publicUrl } } = supabase.storage
@@ -129,9 +134,9 @@ export default function Profile() {
 
       const updates = {
         id: session.user.id,
-        email: profile.email, // Required for upsert if row doesn't exist
+        email: profile.email,
         full_name: profile.full_name,
-        location: profile.location,
+        city: profile.city,
         address: profile.address,
         avatar_url: avatarUrl,
         about: profile.about,
@@ -142,10 +147,13 @@ export default function Profile() {
 
       const { error } = await supabase.from('profiles').upsert(updates);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
+
       setMessage('Profile updated successfully!');
+      
+      // Update local state to reflect new avatar if changed
+      setProfile(prev => ({ ...prev, avatar_url: avatarUrl }));
+
     } catch (error) {
       console.error(error);
       setError('Error updating profile: ' + error.message);
@@ -156,8 +164,14 @@ export default function Profile() {
 
   const handleChangePassword = async (e) => {
       e.preventDefault();
+      setPwdMsg(null);
+
+      if (!oldPassword) {
+          setPwdMsg({ type: 'error', text: "Please enter your current password." });
+          return;
+      }
       if (newPassword !== confirmPassword) {
-          setPwdMsg({ type: 'error', text: "Passwords do not match." });
+          setPwdMsg({ type: 'error', text: "New passwords do not match." });
           return;
       }
       if (newPassword.length < 8) {
@@ -166,9 +180,23 @@ export default function Profile() {
       }
 
       try {
+          // 1. Verify Old Password by re-authenticating
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+              email: session.user.email,
+              password: oldPassword
+          });
+
+          if (signInError) {
+              setPwdMsg({ type: 'error', text: "Incorrect current password." });
+              return;
+          }
+
+          // 2. Update to New Password
           const { error } = await supabase.auth.updateUser({ password: newPassword });
           if (error) throw error;
+
           setPwdMsg({ type: 'success', text: "Password updated successfully!" });
+          setOldPassword('');
           setNewPassword('');
           setConfirmPassword('');
       } catch (err) {
@@ -177,12 +205,13 @@ export default function Profile() {
   };
 
   const getRoleIcon = (role) => {
+    const props = { size: 24, className: "text-white" };
     switch(role) {
-      case 'user': return <User size={24} className="text-primary" />;
-      case 'rescuer': return <HeartHandshake size={24} className="text-primary" />;
-      case 'shelter': return <Building size={24} className="text-primary" />;
-      case 'vet': return <Stethoscope size={24} className="text-primary" />;
-      default: return <User size={24} className="text-primary" />;
+      case 'user': return <User {...props} />;
+      case 'rescuer': return <HeartHandshake {...props} />;
+      case 'shelter': return <Building {...props} />;
+      case 'vet': return <Stethoscope {...props} />;
+      default: return <User {...props} />;
     }
   };
 
@@ -196,172 +225,246 @@ export default function Profile() {
       }
   };
 
+  const getRoleGradient = (role) => {
+      switch(role) {
+          case 'rescuer': return 'from-orange-400 to-pink-500';
+          case 'shelter': return 'from-blue-400 to-indigo-500';
+          case 'vet': return 'from-emerald-400 to-teal-500';
+          default: return 'from-violet-500 to-purple-600';
+      }
+  };
+
   if (loading) {
     return (
-      <div className="page-container flex justify-center items-center h-[50vh]">
-        <p className="text-muted text-lg">Loading profile...</p>
+      <div className="min-h-screen bg-slate-50 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
       </div>
     );
   }
 
-  if (!profile) return null;
+  // If failed to load completely
+  if (!profile && !error) return null;
 
   return (
-    <div className="page-container flex justify-center">
-      <div className="glass-panel w-full max-w-3xl p-8">
-        <div className="flex items-center gap-4 mb-8 border-b border-border pb-6">
-          <div className="p-4 bg-primary/10 rounded-full">
-            {getRoleIcon(profile.role)}
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold m-0">My Profile</h1>
-            <p className="text-muted m-0">Manage your account settings as a {getRoleLabel(profile.role)}</p>
-          </div>
-        </div>
-
-        {message && (
-          <div className="alert alert-success mb-6">
-            {message}
-          </div>
-        )}
-
-        {error && (
-            <div className="alert alert-error mb-6">
-                {error}
-            </div>
-        )}
-
-        <form onSubmit={handleUpdate} className="flex flex-col gap-6">
-          
-          {/* Avatar Upload */}
-          <div className="flex justify-center mb-4">
-             <div className="relative group">
-                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-md bg-slate-100 flex items-center justify-center">
-                    {avatarPreview ? (
-                        <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                        <User size={64} className="text-slate-400" />
-                    )}
-                </div>
-                <label 
-                    htmlFor="avatar-upload"
-                    className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full cursor-pointer shadow-md hover:bg-primary-dark transition-colors flex items-center justify-center"
-                >
-                    <Camera size={18} />
-                    <input id="avatar-upload" type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-                </label>
-             </div>
-          </div>
-
-          {/* Read Only Fields */}
-          <div className="opacity-70">
-            <label className="text-sm font-semibold mb-1 block">Email Address</label>
-            <div className="relative">
-                <Mail size={18} className="absolute top-1/2 left-4 -translate-y-1/2 text-muted" />
-                <input type="email" value={profile.email} disabled className="form-input pl-10 bg-slate-50 cursor-not-allowed" />
-            </div>
-          </div>
-
-          {/* Editable Fields */}
-          <div>
-            <label className="text-sm font-semibold mb-1 block">{profile.role === 'shelter' ? 'Shelter Name' : profile.role === 'vet' ? 'Clinic / Vet Name' : 'Full Name'}</label>
-            <div className="relative">
-                <User size={18} className="absolute top-1/2 left-4 -translate-y-1/2 text-muted" />
-                <input type="text" name="full_name" value={profile.full_name || ''} onChange={handleChange} className="form-input pl-10" required />
-            </div>
-          </div>
-
-           <div>
-            <label className="text-sm font-semibold mb-1 block">About / Bio</label>
-            <div className="relative">
-                <FileText size={18} className="absolute top-4 left-4 text-muted" />
-                <textarea rows="3" name="about" value={profile.about || ''} onChange={handleChange} className="form-textarea pl-10" placeholder="Tell us about yourself..." />
-            </div>
-          </div>
-
-          {(profile.role !== 'user') && (
-            <>
-                <div>
-                     <label className="text-sm font-semibold mb-1 block">Mission / Goal</label>
-                     <div className="relative">
-                         <Target size={18} className="absolute top-4 left-4 text-muted" />
-                         <textarea rows="2" name="goal" value={profile.goal || ''} onChange={handleChange} className="form-textarea pl-10" placeholder="Organization goal?" />
-                     </div>
-                </div>
-                <div>
-                    <label className="text-sm font-semibold mb-1 block">Location Name (City/Area)</label>
-                    <div className="relative">
-                        <MapPin size={18} className="absolute top-1/2 left-4 -translate-y-1/2 text-muted" />
-                        <input type="text" name="location" value={profile.location || ''} onChange={handleChange} className="form-input pl-10" placeholder="e.g. Colombo" />
-                    </div>
-                </div>
-                <div>
-                    <label className="text-sm font-semibold mb-1 block">Address</label>
-                    <textarea rows="3" name="address" value={profile.address || ''} onChange={handleChange} className="form-textarea" placeholder="Address..." />
-                </div>
+    <div className="min-h-screen w-full bg-slate-50 pt-24 pb-12 px-4">
+      <div className="container mx-auto max-w-4xl">
+        
+        {/* HERO SECTION - Only show if profile exists, otherwise just show error below */}
+        {profile && (
+        <div className="relative mb-8 group">
+            <div className={`absolute inset-0 bg-gradient-to-r ${getRoleGradient(profile.role)} rounded-3xl opacity-10 blur-xl transform group-hover:scale-105 transition-transform duration-500`}></div>
+            <div className="relative bg-white/80 backdrop-blur-xl border border-white/50 shadow-xl rounded-3xl p-8 md:p-12 overflow-hidden">
                 
-                {/* Map Picker for Exact Location */}
-                <div className="mt-2">
-                    <label className="flex items-center gap-2 mb-2 font-semibold text-primary">
-                        <MapPin size={18} /> Exact Location on Map
-                    </label>
-                    <div className="h-[300px] rounded-lg overflow-hidden border border-border shadow-inner">
-                        <MapPicker 
-                            initialLocation={profile.latitude && profile.longitude ? { lat: profile.latitude, lng: profile.longitude } : null}
-                            onLocationSelect={(loc) => {
-                                setProfile(prev => ({ ...prev, latitude: loc.lat, longitude: loc.lng }));
-                            }}
-                        />
+                {/* Decorative Background Icon */}
+                <div className="absolute -top-12 -right-12 opacity-5">
+                    {getRoleIcon(profile.role)}
+                    <div className="transform scale-[5] text-indigo-900">
+                        {getRoleIcon(profile.role)}
                     </div>
-                    <p className="text-xs text-muted mt-2">
-                        Click on the map to set your exact location so users can find you.
-                    </p>
                 </div>
-            </>
-          )}
 
-          <div className="pt-6 border-t border-border mt-2">
-            <button type="submit" className="btn btn-primary w-full justify-center text-lg py-3" disabled={updating}>
-                {updating ? 'Saving...' : <><Save size={20} /> Save Changes</>}
-            </button>
-          </div>
-        </form>
+                <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
+                    {/* Avatar with Edit Overlay */}
+                    <div className="relative">
+                        <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-gradient-to-tr from-white to-slate-200 shadow-xl">
+                            <div className="w-full h-full rounded-full overflow-hidden bg-slate-100">
+                                {avatarPreview ? (
+                                    <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300">
+                                        <User size={64} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <label className="absolute bottom-2 right-2 bg-indigo-600 text-white p-2.5 rounded-full cursor-pointer shadow-lg hover:bg-indigo-700 hover:scale-110 transition-all">
+                            <Camera size={18} />
+                            <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                        </label>
+                    </div>
 
-        {/* Security Section (Change Password) */}
-        <div className="mt-12 pt-8 border-t border-border">
-            <h3 className="flex items-center gap-2 mb-4 text-lg font-bold text-slate-800">
-                <Shield size={20} /> Security
-            </h3>
-            <div className="bg-subtle p-6 rounded-xl border border-border">
-                <h4 className="m-0 mb-4 font-bold">Change Password</h4>
-                {pwdMsg && (
-                    <div className={`mb-4 p-3 rounded-lg text-sm font-medium ${
-                        pwdMsg.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
-                    }`}>
-                        {pwdMsg.text}
-                    </div>
-                )}
-                <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
-                    <div>
-                        <label className="text-sm font-semibold mb-1 block">New Password</label>
-                        <div className="relative">
-                            <Lock size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
-                            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="form-input pl-9" placeholder="Min 8 chars" />
+                    {/* Header Text */}
+                    <div className="text-center md:text-left flex-1">
+                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider mb-2 bg-gradient-to-r ${getRoleGradient(profile.role)} shadow-md`}>
+                            {getRoleIcon(profile.role)}
+                            {getRoleLabel(profile.role)}
                         </div>
+                        <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-2">
+                            {profile.full_name || 'Your Name'}
+                        </h1>
+                        <p className="text-slate-500 text-lg max-w-lg">
+                            {profile.about || 'Tell the community about yourself...'}
+                        </p>
                     </div>
-                    <div>
-                        <label className="text-sm font-semibold mb-1 block">Confirm Password</label>
-                        <div className="relative">
-                             <Lock size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
-                            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="form-input pl-9" placeholder="Repeat password" />
+                </div>
+            </div>
+        </div>
+        )}
+
+        {/* FEEDBACK MESSAGES */}
+        {message && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl flex items-center gap-2 font-bold animate-in fade-in slide-in-from-top-2">
+                <CheckCircle size={20} /> {message}
+            </div>
+        )}
+        {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-2 font-bold animate-in fade-in slide-in-from-top-2">
+                <AlertCircle size={20} /> {error}
+                <button onClick={() => window.location.reload()} className="ml-auto text-sm underline hover:no-underline">Reload Page</button>
+            </div>
+        )}
+
+        {profile && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* LEFT COLUMN - MAIN FORM */}
+            <div className="lg:col-span-2 space-y-8">
+                <form onSubmit={handleUpdate} className="bg-white/80 backdrop-blur-lg border border-white/50 shadow-lg rounded-3xl p-6 md:p-8">
+                    
+                    <div className="flex items-center gap-2 mb-6 text-slate-800">
+                        <Edit2 size={24} className="text-indigo-500" />
+                        <h2 className="text-xl font-bold">Account Details</h2>
+                    </div>
+
+                    <div className="space-y-6">
+                        {/* Identify */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <InputGroup label={profile.role === 'shelter' ? 'Shelter Name' : profile.role === 'vet' ? 'Clinic Name' : 'Full Name'} icon={<User size={18} />}>
+                                <input name="full_name" value={profile.full_name || ''} onChange={handleChange} className="input-field" placeholder="Jane Doe" required />
+                            </InputGroup>
+                            
+                            <InputGroup label="Email Address" icon={<Mail size={18} />}>
+                                <input value={profile.email || ''} disabled className="input-field opacity-60 cursor-not-allowed bg-slate-50" />
+                            </InputGroup>
                         </div>
+
+                        {/* Location */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <InputGroup label="City / District" icon={<MapPin size={18} />}>
+                                <input name="city" value={profile.city || ''} onChange={handleChange} className="input-field" placeholder="e.g. Colombo" />
+                            </InputGroup>
+                            <InputGroup label="Detailed Address" icon={<Building size={18} />}>
+                                <input name="address" value={profile.address || ''} onChange={handleChange} className="input-field" placeholder="Street address..." />
+                            </InputGroup>
+                        </div>
+
+                        {/* Bio */}
+                        <InputGroup label="About / Bio" icon={<FileText size={18} />}>
+                            <textarea name="about" value={profile.about || ''} onChange={handleChange} className="input-field min-h-[100px] resize-none" placeholder="Share a brief bio..." />
+                        </InputGroup>
+
+                        {/* Special Role Fields */}
+                        {profile.role !== 'user' && (
+                            <>
+                                <div className="border-t border-slate-100 my-4 pt-4"></div>
+                                <InputGroup label="Mission / Goal" icon={<Target size={18} />}>
+                                    <textarea name="goal" value={profile.goal || ''} onChange={handleChange} className="input-field min-h-[80px] resize-none" placeholder="What is your organization's mission?" />
+                                </InputGroup>
+                                
+                                <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                                    <label className="flex items-center gap-2 text-indigo-900 font-bold mb-3 text-sm">
+                                        <MapPin size={16} /> Pin Exact Location
+                                    </label>
+                                    <div className="h-64 rounded-xl overflow-hidden shadow-sm border border-indigo-200">
+                                        <MapPicker 
+                                            initialLocation={profile.latitude && profile.longitude ? { lat: profile.latitude, lng: profile.longitude } : null}
+                                            onLocationSelect={(loc) => {
+                                                setProfile(prev => ({ ...prev, latitude: loc.lat, longitude: loc.lng }));
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-indigo-400 mt-2 text-center">Help users find you easily on the map.</p>
+                                </div>
+                            </>
+                        )}
                     </div>
-                    <button type="submit" className="btn btn-secondary self-start">Update Password</button>
+
+                    <div className="mt-8 pt-6 border-t border-slate-100">
+                        <button 
+                            type="submit" 
+                            disabled={updating}
+                            className="w-full py-4 rounded-xl bg-slate-900 text-white font-bold text-lg shadow-xl shadow-slate-200 hover:-translate-y-1 hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+                        >
+                            {updating ? 'Saving...' : <><Save size={20} /> Save Changes</>}
+                        </button>
+                    </div>
                 </form>
             </div>
-        </div>
 
+            {/* RIGHT COLUMN - SECURITY & EXTRAS */}
+            <div className="lg:col-span-1 space-y-8">
+                {/* Security Card */}
+                <div className="bg-white/80 backdrop-blur-lg border border-white/50 shadow-lg rounded-3xl p-6 md:p-8">
+                    <div className="flex items-center gap-2 mb-6 text-slate-800">
+                        <Shield size={24} className="text-emerald-500" />
+                        <h2 className="text-xl font-bold">Security</h2>
+                    </div>
+
+                    {pwdMsg && (
+                        <div className={`mb-4 p-3 rounded-xl text-sm font-bold flex items-center gap-2 ${
+                            pwdMsg.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
+                        }`}>
+                            {pwdMsg.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
+                            {pwdMsg.text}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleChangePassword} className="space-y-4">
+                        <InputGroup label="Current Password" icon={<Lock size={16} />}>
+                            <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="input-field" placeholder="Enter current password" />
+                        </InputGroup>
+                        <div className="border-t border-slate-100 my-2"></div>
+                        <InputGroup label="New Password" icon={<Lock size={16} />}>
+                            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input-field" placeholder="Min 8 chars" />
+                        </InputGroup>
+                        <InputGroup label="Confirm Password" icon={<Lock size={16} />}>
+                            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input-field" placeholder="Repeat password" />
+                        </InputGroup>
+                        <button type="submit" className="w-full py-3 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors">
+                            Update Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+        )}
       </div>
+
+      <style>{`
+        .input-field {
+            width: 100%;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 0.75rem 1rem 0.75rem 2.5rem; /* Left padding for icon */
+            border-radius: 0.75rem;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s;
+            color: #1e293b;
+        }
+        .input-field:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+        .input-field:disabled {
+            background-color: #f8fafc;
+            color: #94a3b8;
+        }
+      `}</style>
     </div>
   );
 }
+
+// Helper Components
+const InputGroup = ({ label, icon, children }) => (
+    <div className="relative group">
+        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">{label}</label>
+        <div className="relative">
+            <div className="absolute top-3.5 left-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                {icon}
+            </div>
+            {children}
+        </div>
+    </div>
+);
