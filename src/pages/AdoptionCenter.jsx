@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Heart, Filter, PawPrint, Plus, MapPin, Search } from 'lucide-react';
+import { Heart, Filter, PawPrint, Plus, MapPin, Search, Shield, X, Lock, AlertCircle } from 'lucide-react';
 import CreateAdoptionModal from '../components/CreateAdoptionModal';
 import AdoptionDetailsModal from '../components/AdoptionDetailsModal';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 export default function AdoptionCenter() {
+  const navigate = useNavigate();
   const [session, setSession] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [animals, setAnimals] = useState([]);
@@ -13,6 +16,7 @@ export default function AdoptionCenter() {
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedAnimal, setSelectedAnimal] = useState(null); // If set, shows Details Modal
+  const [accessDeniedType, setAccessDeniedType] = useState(null); // 'login' or 'role'
 
   // Filters
   const [filterType, setFilterType] = useState('all');
@@ -100,6 +104,21 @@ export default function AdoptionCenter() {
     setWishlist(newWishlist);
   };
 
+  const handleListPet = () => {
+      if (!session) {
+          setAccessDeniedType('login');
+          return;
+      }
+      
+      const allowedRoles = ['rescuer', 'shelter', 'vet', 'admin'];
+      if (!allowedRoles.includes(userRole)) {
+          setAccessDeniedType('role');
+          return;
+      }
+
+      setShowCreateModal(true);
+  };
+
   // Filter Logic
   const filteredAnimals = animals.filter(a => {
     if (showWishlistOnly && !wishlist.has(a.id)) return false;
@@ -141,7 +160,7 @@ export default function AdoptionCenter() {
                         Every pet deserves a second chance. <br/> Open your heart and home today.
                     </p>
                     <button 
-                        onClick={() => setShowCreateModal(true)}
+                        onClick={handleListPet}
                         className="bg-slate-900 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center gap-3 group">
                         Get Started 
                         <div className="bg-white/20 rounded-full p-1 group-hover:bg-white/30 transition-colors">
@@ -207,16 +226,14 @@ export default function AdoptionCenter() {
         </div>
 
         {/* List a Pet Button - Fixed Position */}
-        {session && ['rescuer', 'shelter', 'vet'].includes(userRole) && (
-            <div className="flex justify-end mb-8 px-4">
-                 <button 
-                    className="btn btn-primary shadow-xl hover:scale-105"
-                    onClick={() => setShowCreateModal(true)}
-                >
-                    <Plus size={20} /> List a Pet
-                </button>
-            </div>
-        )}
+        <div className="flex justify-end mb-8 px-4">
+                <button 
+                className="btn btn-primary shadow-xl hover:scale-105"
+                onClick={handleListPet}
+            >
+                <Plus size={20} /> List a Pet
+            </button>
+        </div>
 
         {/* Pet Cards Grid */}
         {loading ? (
@@ -259,6 +276,67 @@ export default function AdoptionCenter() {
         onClose={() => setSelectedAnimal(null)}
         session={session}
       />
+
+      {/* Access Denied Modal */}
+      <AnimatePresence>
+        {accessDeniedType && (
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+                onClick={() => setAccessDeniedType(null)}
+            >
+                <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-white rounded-[2rem] p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden"
+                    onClick={e => e.stopPropagation()}
+                >
+                    <button 
+                        onClick={() => setAccessDeniedType(null)}
+                        className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
+                    >
+                        <X size={20} className="text-slate-500" />
+                    </button>
+
+                    <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Lock size={36} className="text-orange-500" />
+                    </div>
+
+                    {accessDeniedType === 'login' ? (
+                        <>
+                            <h3 className="text-2xl font-black text-slate-800 mb-2">Partner Access Only</h3>
+                            <p className="text-slate-500 mb-8 leading-relaxed">
+                                Please log in as an authorized <strong>NGO, Shelter, or Rescuer</strong> to list a pet for adoption.
+                            </p>
+                            <button 
+                                onClick={() => navigate('/auth')}
+                                className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl hover:bg-slate-800 transition-all shadow-lg"
+                            >
+                                Login Now
+                            </button>
+                        </>
+                    ) : ( 
+                        <>
+                            <h3 className="text-2xl font-black text-slate-800 mb-2">Restricted Feature</h3>
+                            <p className="text-slate-500 mb-8 leading-relaxed">
+                                Listing pets is restricted to verified <strong>NGOs and Shelters</strong>. Citizens can browse and adopt, but cannot upload listings.
+                            </p>
+                            <button 
+                                onClick={() => setAccessDeniedType(null)}
+                                className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-200"
+                            >
+                                Understood
+                            </button>
+                        </>
+                    )}
+                </motion.div>
+            </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

@@ -22,6 +22,7 @@ export default function NotifyRescuer() {
   const [coords, setCoords] = useState(null); 
   const [urgency, setUrgency] = useState('medium');
   const [selectedRescuer, setSelectedRescuer] = useState('');
+  const [rescuerCoords, setRescuerCoords] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
@@ -43,6 +44,35 @@ export default function NotifyRescuer() {
           setRescuers(data || []);
       } catch (err) {
           console.error("Error fetching rescuers:", err);
+      }
+  };
+
+  const geocodeLocation = async (locationStr) => {
+    if (!locationStr) return;
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationStr)}&limit=1`);
+        const data = await response.json();
+        if (data && data.length > 0) {
+            setRescuerCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+        } else {
+            console.warn("Could not geocode rescuer location:", locationStr);
+            setRescuerCoords(null);
+        }
+    } catch (err) {
+        console.error("Geocoding error:", err);
+        setRescuerCoords(null);
+    }
+  };
+
+  const handleRescuerChange = (e) => {
+      const rescuerId = e.target.value;
+      setSelectedRescuer(rescuerId);
+      
+      const rescuer = rescuers.find(r => r.id === rescuerId);
+      if (rescuer && rescuer.location) {
+          geocodeLocation(rescuer.location);
+      } else {
+          setRescuerCoords(null);
       }
   };
 
@@ -142,6 +172,7 @@ export default function NotifyRescuer() {
       setCoords(null);
       setUrgency('medium');
       setSelectedRescuer('');
+      setRescuerCoords(null);
       removeImage({ stopPropagation: () => {} });
       window.scrollTo(0,0);
     } catch (err) {
@@ -356,9 +387,9 @@ export default function NotifyRescuer() {
                             
                             <div className="h-64 w-full rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner relative group">
                                 <div className="absolute inset-0 z-0">
-                                   <MapPicker onLocationSelect={(loc) => setCoords(loc)} />
+                                   <MapPicker onLocationSelect={(loc) => setCoords(loc)} rescuerLocation={rescuerCoords} />
                                 </div>
-                                {!coords && (
+                                {!coords && !rescuerCoords && (
                                     <div className="absolute inset-0 pointer-events-none bg-slate-900/5 flex items-center justify-center">
                                         <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-sm text-xs font-bold text-slate-500 flex items-center gap-2">
                                             <Navigation size={14} /> Tap map to pin
@@ -419,7 +450,7 @@ export default function NotifyRescuer() {
                                 <div className="relative">
                                     <select 
                                         value={selectedRescuer}
-                                        onChange={(e) => setSelectedRescuer(e.target.value)}
+                                        onChange={handleRescuerChange}
                                         required
                                         className="w-full h-28 p-4 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700 outline-none focus:ring-2 focus:ring-orange-400 transition-all appearance-none resize-none pt-4 align-top focus:bg-white"
                                         size={4}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Locate } from 'lucide-react';
@@ -12,30 +12,48 @@ let DefaultIcon = L.icon({
     iconUrl: icon,
     shadowUrl: iconShadow,
     iconSize: [25, 41],
-    iconAnchor: [12, 41]
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
 });
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// New icon for Rescuer (Red hue using CSS filter or just default with popup for now)
+// We will simply use the default icon but arguably we could use a different one. 
+// For simplicity and robustness, we'll stick to default but add a Popup.
+
 function LocationMarker({ position, setPosition, onLocationSelect }) {
-  const map = useMapEvents({
-    click(e) {
-      setPosition(e.latlng);
-      onLocationSelect(e.latlng);
-    },
-    locationfound(e) {
-      setPosition(e.latlng);
-      map.flyTo(e.latlng, map.getZoom());
-      onLocationSelect(e.latlng);
-    },
-  });
+  const map = useMap();
+  
+  // Handling map clicks
+  useEffect(() => {
+    map.on('click', (e) => {
+        setPosition(e.latlng);
+        onLocationSelect(e.latlng);
+    });
+  }, [map, setPosition, onLocationSelect]);
 
   return position === null ? null : (
-    <Marker position={position}></Marker>
+    <Marker position={position}>
+        <Popup>Incident Location</Popup>
+    </Marker>
   );
 }
 
-export default function MapPicker({ onLocationSelect, initialLocation }) {
+// Component to handle flying to rescuer location
+function MapFlyTo({ location }) {
+    const map = useMap();
+    useEffect(() => {
+        if (location) {
+            map.flyTo(location, 14, {
+                duration: 2
+            });
+        }
+    }, [location, map]);
+    return null;
+}
+
+export default function MapPicker({ onLocationSelect, initialLocation, rescuerLocation }) {
   // Default to Colombo, Sri Lanka if no location (approximate center)
   const defaultCenter = [6.9271, 79.8612]; 
   const [position, setPosition] = useState(initialLocation || null);
@@ -75,6 +93,19 @@ export default function MapPicker({ onLocationSelect, initialLocation }) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <LocationMarker position={position} setPosition={setPosition} onLocationSelect={onLocationSelect} />
+        
+        {/* Rescuer Marker */}
+        {rescuerLocation && (
+            <>
+                <Marker position={rescuerLocation}>
+                    <Popup>
+                        <strong>Rescuer / Shelter</strong><br/>
+                        Approximate Location
+                    </Popup>
+                </Marker>
+                <MapFlyTo location={rescuerLocation} />
+            </>
+        )}
       </MapContainer>
     </div>
   );

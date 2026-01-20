@@ -303,6 +303,54 @@ export default function BookAppointment() {
 
   const selectedVet = vets.find(v => v.id === formData.vetId);
 
+  // ... imports remain the same
+
+  // Add AuthContext usage if possible, or stick to local session. 
+  // For consistency with NotifyRescuer, let's try to use useAuth if it's a global context, 
+  // but since I don't want to break if useAuth isn't exported there, I'll stick to the existing session logic 
+  // but IMPROVE the UX by rendering a block.
+
+  // Actually, checking previous files, NotifyRescuer used `useAuth`. 
+  // To be safe and minimal changes, I will use the local `session` state that is already there, 
+  // effectively "blocking" the UI if session is null.
+
+  /* ... inside component ... */
+  
+  if (!session) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-950 relative overflow-hidden p-4 font-sans">
+            {/* Background Decor similar to NotifyRescuer for consistency */}
+            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=2000')] bg-cover bg-center opacity-20 blur-sm"></div>
+            
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-slate-900/80 backdrop-blur-xl p-12 rounded-[2.5rem] max-w-lg w-full text-center shadow-2xl border border-white/10 relative z-10"
+            >
+                <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Shield size={40} className="text-amber-500" />
+                </div>
+                <h2 className="text-3xl font-black text-white mb-3">Login Required</h2>
+                <p className="text-slate-400 text-lg mb-8 leading-relaxed">
+                    Please log in to book appointments with our top-rated veterinarians.
+                </p>
+                <button 
+                    onClick={() => navigate('/auth')} 
+                    className="w-full bg-white text-slate-900 font-bold py-4 rounded-xl hover:bg-slate-200 transition-all shadow-lg active:scale-95"
+                >
+                    Login / Sign Up
+                </button>
+                <button 
+                     onClick={() => navigate('/')}
+                     className="mt-4 text-slate-500 hover:text-white text-sm font-bold transition-colors"
+                >
+                    Back to Home
+                </button>
+            </motion.div>
+        </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-6 pb-20">
       <div className="max-w-4xl mx-auto">
