@@ -2,8 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Heart, Shield, ArrowRight, Activity, MapPin, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
+  const { user } = useAuth();
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-20 overflow-x-hidden">
       
@@ -131,6 +133,7 @@ export default function Home() {
       </section>
 
       {/* CTA SECTION */}
+      {!user && (
       <section className="px-6 pb-20">
           <div className="max-w-6xl mx-auto bg-slate-900 rounded-[32px] p-12 md:p-16 text-center relative overflow-hidden">
                 {/* Background Patterns */}
@@ -154,6 +157,7 @@ export default function Home() {
                 </div>
           </div>
       </section>
+      )}
 
     </div>
   );

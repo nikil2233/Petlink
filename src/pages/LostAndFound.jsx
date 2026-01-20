@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
     MapPin, Camera, AlertTriangle, Send, X, Search, Phone, 
     Calendar, Clock, PawPrint, CheckCircle, FileText, Download, 
-    Share2, Eye, Shield, Lock, Unlock 
+    Share2, Eye, Shield, Lock, Unlock, Truck, Heart, Bell 
 } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 import { useAuth } from '../context/AuthContext';
 import jsPDF from 'jspdf';
 
+
 export default function LostAndFound() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const location = useLocation();
+  const { user, session } = useAuth();
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts', 'report'
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -50,30 +52,112 @@ export default function LostAndFound() {
   const [contactPhone, setContactPhone] = useState('');
   const [hideContact, setHideContact] = useState(false);
 
+  // E. Founder Specifics (Custody & Health)
+  const [custodyStatus, setCustodyStatus] = useState('user_holding'); // 'user_holding', 'rescuer_notified'
+  const [selectedRescuer, setSelectedRescuer] = useState('');
+  const [isInjured, setIsInjured] = useState(false);
+  const [injuryDetails, setInjuryDetails] = useState('');
+  const [rescuers, setRescuers] = useState([]);
+
   // --- PET DETAIL MODAL STATE ---
   const [selectedPet, setSelectedPet] = useState(null);
 
 
+  const [nameUnknown, setNameUnknown] = useState(false);
+
   useEffect(() => {
     fetchLostPets();
-  }, []);
+    fetchRescuers();
+  }, [activeTab]);
+
+  // Handle Deep Linking from Notifications
+  useEffect(() => {
+    const fetchLinkedPet = async (id) => {
+        try {
+            const { data, error } = await supabase
+                .from('lost_pets')
+                .select('*')
+                .eq('id', id)
+                .single();
+            if (data) {
+                setSelectedPet(data);
+                // Switch to alerts tab so modal is visible over the grid
+                setActiveTab('alerts'); 
+            }
+        } catch (err) {
+            console.error("Error fetching linked pet:", err);
+        }
+    };
+
+    const params = new URLSearchParams(location.search);
+    const openId = params.get('open_id');
+    
+    if (openId) {
+        // First check if we already have it in the list
+        const existingPet = lostPets.find(p => p.id === openId);
+        if (existingPet) {
+            setSelectedPet(existingPet);
+            setActiveTab('alerts');
+        } else {
+            // If not found (e.g. freshly loaded, or not in current fetch), fetch specifically
+            fetchLinkedPet(openId);
+        }
+    }
+  }, [location.search, lostPets]); // Depend on location changes too
+
+  const fetchRescuers = async () => {
+      try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, role, location')
+            .in('role', ['rescuer', 'shelter']);
+          if (error) throw error;
+          setRescuers(data || []);
+      } catch (err) {
+          console.error("Error fetching rescuers:", err);
+      }
+  };
 
   // Set default name for found pets
   useEffect(() => {
-      if (reportType === 'found' && petName === '') {
-          setPetName('Unknown');
-      } else if (reportType === 'lost' && petName === 'Unknown') {
-          setPetName('');
+      if (reportType === 'found') {
+          // If switching to found, default to unknown logic if name is empty
+          if (petName === '') {
+              setNameUnknown(true);
+              setPetName('Unknown');
+          }
+      } else {
+          // If switching to lost, clear unknown status
+          setNameUnknown(false);
+          if (petName === 'Unknown') setPetName('');
       }
   }, [reportType]);
 
+  // Handle Name Unknown Toggle
+  const handleNameUnknownChange = (e) => {
+      const checked = e.target.checked;
+      setNameUnknown(checked);
+      if (checked) {
+          setPetName('Unknown');
+      } else {
+          setPetName('');
+      }
+  };
+
   const fetchLostPets = async () => {
     try {
-        const { data, error } = await supabase
+        let query = supabase
             .from('lost_pets')
             .select('*')
-            .neq('status', 'reunited') // Hide reunited
             .order('created_at', { ascending: false });
+
+        if (activeTab === 'reunited') {
+             query = query.eq('status', 'reunited');
+        } else {
+             query = query.neq('status', 'reunited');
+        }
+        
+        const { data, error } = await query;
         
         if (error) throw error;
         setLostPets(data || []);
@@ -96,9 +180,26 @@ export default function LostAndFound() {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadImages = async () => {
+  // Injury Images Handling
+  const [injuryImages, setInjuryImages] = useState([]); // Array of {file, preview}
+
+  const handleInjuryImageChange = (e) => {
+    if (e.target.files) {
+        const newImages = Array.from(e.target.files).map(file => ({
+            file,
+            preview: URL.createObjectURL(file)
+        }));
+        setInjuryImages(prev => [...prev, ...newImages].slice(0, 3)); // Max 3
+    }
+  };
+
+  const removeInjuryImage = (index) => {
+    setInjuryImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadImages = async (imagesToUpload) => {
       const urls = [];
-      for (const img of images) {
+      for (const img of imagesToUpload) {
           const fileExt = img.file.name.split('.').pop();
           const fileName = `${Math.random()}.${fileExt}`;
           const filePath = `${fileName}`;
@@ -168,7 +269,8 @@ export default function LostAndFound() {
     }
 
     if (!coords && !locationName) {
-        setMsg({ type: 'error', text: 'Please provide a location.' });
+        setMsg({ type: 'error', text: 'Please provide a location on the map.' });
+        setLoading(false);
         return;
     }
 
@@ -176,8 +278,15 @@ export default function LostAndFound() {
     setMsg(null);
 
     try {
-        const imageUrls = await uploadImages();
-        const mainImage = imageUrls[0] || null;
+        // Upload Main Images
+        const uploadedImageUrls = await uploadImages(images);
+        
+        // Upload Injury Images (if any)
+        let uploadedInjuryImageUrls = [];
+        if (isInjured && injuryImages.length > 0) {
+            uploadedInjuryImageUrls = await uploadImages(injuryImages); // Reuse same upload function logic if possible, or duplicate
+        }
+        const mainImage = uploadedImageUrls[0] || null; // Corrected to use uploadedImageUrls
 
         const payload = {
             owner_id: session.user.id,
@@ -193,7 +302,7 @@ export default function LostAndFound() {
             distinctive_features: distinctiveFeatures,
             description: distinctiveFeatures || 'No description provided', // Fallback for legacy column
             image_url: mainImage,
-            additional_images: imageUrls,
+            additional_images: uploadedImageUrls,
             last_seen_date: lastSeenDate,
             last_seen_time: lastSeenTime,
             last_seen_location: locationName,
@@ -203,7 +312,15 @@ export default function LostAndFound() {
             microchip_status: microchipStatus,
             contact_phone: contactPhone,
             hide_contact: hideContact,
-            status: reportType // 'lost' or 'found'
+            contact_phone: contactPhone,
+            hide_contact: hideContact,
+            status: reportType, // 'lost' or 'found'
+            // New Fields
+            custody_status: reportType === 'found' ? custodyStatus : null,
+            custody_rescuer_id: (reportType === 'found' && custodyStatus === 'rescuer_notified') ? selectedRescuer : null,
+            is_injured: reportType === 'found' ? isInjured : false,
+            injury_details: (reportType === 'found' && isInjured) ? injuryDetails : null,
+            injury_images: (reportType === 'found' && isInjured) ? uploadedInjuryImageUrls : []
         };
 
         const { data, error } = await supabase.from('lost_pets').insert([payload]).select();
@@ -229,31 +346,209 @@ export default function LostAndFound() {
       // Direct update, no confirm here because modal confirms intent
       const { error } = await supabase.from('lost_pets').update({ status: 'reunited' }).eq('id', id);
       if (error) console.error(error);
-      else fetchLostPets();
+      else {
+          setShowHoorayModal(true);
+          fetchLostPets();
+          setSelectedPet(null);
+      }
   };
 
   const openPetDetail = (pet) => {
       setSelectedPet(pet);
   };
 
+  const handleMarkReunitedFromModal = async (petId) => {
+    // Reuse existing function logic or call it if adaptable. 
+    // For now, implementing direct logic for clearer modal context
+    markReunited(petId);
+    setSelectedPet(null);
+  };
+
+  const handleAcceptCustody = (petId) => {
+      openPickupModal(petId);
+  };
+
   const closePetDetail = () => {
       setSelectedPet(null);
   };
 
-  const handleMarkReunitedFromModal = async (e) => {
-      e.stopPropagation();
-      if (selectedPet) {
-          if(window.confirm("Is this pet safely home? This will remove it from the active list.")) {
-             await markReunited(selectedPet.id);
-             closePetDetail();
-          }
-      }
-  };
+
 
   // --- SUCCESS MODAL STATE (Restored) ---
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showHoorayModal, setShowHoorayModal] = useState(false);
   const [successPayload, setSuccessPayload] = useState(null);
   const [successImage, setSuccessImage] = useState(null);
+
+  // --- PICKUP SCHEDULE STATE ---
+  const [showPickupModal, setShowPickupModal] = useState(false);
+  const [pickupDate, setPickupDate] = useState('');
+  const [pickupTime, setPickupTime] = useState('');
+  const [pickupNote, setPickupNote] = useState('');
+  const [petToPickup, setPetToPickup] = useState(null);
+
+  const openPickupModal = (petId) => {
+      setPetToPickup(petId);
+      setShowPickupModal(true);
+  };
+
+  const submitPickupSchedule = async () => {
+      if (!pickupDate || !pickupTime) {
+          alert("Please select both a date and time.");
+          return;
+      }
+
+      try {
+          const { error } = await supabase
+            .from('lost_pets')
+            .update({
+                custody_status: 'pickup_scheduled',
+                status: 'found',
+                pickup_date: pickupDate,
+                pickup_time: pickupTime,
+                pickup_note: pickupNote
+            })
+            .eq('id', petToPickup);
+
+          if (error) throw error;
+
+          // Notify the finder
+          const pet = lostPets.find(p => p.id === petToPickup);
+          if (pet && pet.owner_id) {
+              const { error: notifError } = await supabase
+                .from('notifications')
+                .insert({
+                    user_id: pet.owner_id,
+                    title: 'Pickup Scheduled',
+                    message: `A rescuer has scheduled a pickup for ${pickupDate} at ${pickupTime}.`,
+                    type: 'info',
+                    link: `/lost-and-found?open_id=${petToPickup}`
+                });
+              if (notifError) console.error("Error sending notification:", notifError);
+          }
+
+          // Optimistic UI Update
+          setLostPets(prev => prev.map(p => 
+            p.id === petToPickup ? { 
+                ...p, 
+               custody_status: 'pickup_scheduled',
+                pickup_date: pickupDate,
+                pickup_time: pickupTime 
+            } : p
+          ));
+          if (selectedPet && selectedPet.id === petToPickup) {
+              setSelectedPet(prev => ({ 
+                  ...prev, 
+                  custody_status: 'pickup_scheduled',
+                  pickup_date: pickupDate,
+                  pickup_time: pickupTime 
+              }));
+          }
+
+          setShowPickupModal(false);
+          setPetToPickup(null);
+          setPickupDate('');
+          setPickupTime('');
+          setPickupNote('');
+          
+          setMsg({ type: 'success', text: 'Pickup Scheduled! The finder has been notified.' });
+          setTimeout(() => setMsg(null), 5000);
+
+      } catch (err) {
+          console.error("Error scheduling pickup:", err);
+          alert("Failed to schedule pickup. Please try again.");
+      }
+  };
+
+
+
+  // --- CLAIM PET STATE ---
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [petToClaim, setPetToClaim] = useState(null);
+  
+  // Claim Form State
+  const [claimName, setClaimName] = useState('');
+  const [claimContact, setClaimContact] = useState('');
+  const [claimProof, setClaimProof] = useState('');
+  const [claimImage, setClaimImage] = useState(null);
+  const claimFileRef = useRef(null);
+
+  const openClaimModal = (pet) => {
+      setPetToClaim(pet);
+      // Pre-fill if we have user info, else blank
+      setClaimName(user?.user_metadata?.full_name || ''); 
+      setClaimContact(user?.email || '');
+      setClaimProof('');
+      setClaimImage(null);
+      setShowClaimModal(true);
+  };
+
+  const confirmClaimPet = async () => {
+      if (!petToClaim) return;
+      if (!claimName || !claimContact || !claimProof) {
+          setMsg({ type: 'error', text: 'Please fill in your name, contact info, and proof details.' });
+          setTimeout(() => setMsg(null), 3000);
+          return;
+      }
+
+      try {
+          // 1. Upload Proof Image (if any)
+          let proofImageUrl = "No image provided";
+          if (claimImage) {
+              const fileExt = claimImage.name.split('.').pop();
+              const fileName = `${Date.now()}_proof.${fileExt}`;
+              const { error: uploadError } = await supabase.storage
+                  .from('lost-pets') // FIXED: Using correct bucket 'lost-pets'
+                  .upload(fileName, claimImage);
+
+              if (uploadError) throw uploadError;
+              
+              const { data: publicUrlData } = supabase.storage
+                  .from('lost-pets')
+                  .getPublicUrl(fileName);
+              
+              proofImageUrl = publicUrlData.publicUrl;
+          }
+
+          // 2. Construct Detailed Message
+          const claimMessage = `
+CLAIMANT: ${claimName}
+CONTACT: ${claimContact}
+PROOF DETAILS: ${claimProof}
+PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"}
+          `.trim();
+
+          const notificationPayload = {
+              title: '👑 Pet Claimed! (Action Required)',
+              message: claimMessage, // Detailed text for the UI
+              type: 'alert',
+              link: `/lost-and-found?open_id=${petToClaim.id}&proof_img=${encodeURIComponent(proofImageUrl)}`
+          };
+
+          // 3. Notify Finder
+          const { error: finderError } = await supabase
+            .from('notifications')
+            .insert({ ...notificationPayload, user_id: petToClaim.owner_id });
+          
+          if (finderError) throw finderError;
+
+          // 4. Notify Rescuer (if exists)
+          if (petToClaim.custody_rescuer_id) {
+              await supabase
+                .from('notifications')
+                .insert({ ...notificationPayload, user_id: petToClaim.custody_rescuer_id });
+          }
+
+          setShowClaimModal(false);
+          setMsg({ type: 'success', text: 'Claim submitted! The finder has been notified with your details.' });
+          setTimeout(() => setMsg(null), 5000);
+
+      } catch (error) {
+          console.error("Error claiming pet:", error);
+          setMsg({ type: 'error', text: 'Failed to submit claim. Please try again.' }); // FIXED: UI message
+          setTimeout(() => setMsg(null), 4000);
+      }
+  };
 
   const handleSuccessModalClose = (shouldGenerate) => {
       if (shouldGenerate && successPayload) {
@@ -279,8 +574,53 @@ export default function LostAndFound() {
     boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
   };
 
+  const inputFieldStyles = `
+    .input-field {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        font-size: 0.95rem;
+        outline: none;
+        transition: all 0.2s;
+        color: #1e293b;
+    }
+    .input-field:focus {
+        background: white;
+        border-color: #f43f5e;
+        box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.1);
+    }
+  `;
+
+  // TABS
+  const tabs = [
+    { id: 'alerts', label: 'Active Alerts', icon: <Bell size={18} /> },
+    { id: 'report', label: 'Report Lost/Found', icon: <AlertTriangle size={18} /> },
+    { id: 'reunited', label: 'Reunited', icon: <Heart size={18} /> },
+  ];
+
   return (
     <div className="min-h-screen w-full bg-slate-50 pt-24 pb-12 px-4 relative">
+      
+      {/* HEADER TABS - FIXED */}
+       <div className="max-w-6xl mx-auto mb-8">
+            <div className="flex p-1 bg-white rounded-2xl shadow-sm border border-slate-200 w-fit mx-auto md:mx-0">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
+                            activeTab === tab.id 
+                            ? 'bg-slate-900 text-white shadow-md' 
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                    >
+                        {tab.icon} {tab.label}
+                    </button>
+                ))}
+            </div>
+       </div>
       
       {/* PET DETAIL MODAL */}
       {selectedPet && (
@@ -330,6 +670,66 @@ export default function LostAndFound() {
                                 </div>
                             </div>
 
+                            {/* Custody Info */}
+                            {/* CUSTODY STATUS DISPLAY */}
+                                {selectedPet.custody_status === 'rescuer_notified' && (
+                                    <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 mb-6">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Shield className="text-amber-600" size={20} />
+                                            <h4 className="font-black text-amber-800 uppercase text-sm">Rescue Pickup Arranged</h4>
+                                        </div>
+                                        <p className="text-sm text-amber-900 mb-2">
+                                            The finder cannot hold this pet. A request has been sent to:
+                                        </p>
+                                        {selectedPet.custody_rescuer_id && (
+                                            <div className="bg-white p-3 rounded-xl border border-amber-200 shadow-sm">
+                                                <p className="font-bold text-amber-900 text-sm">
+                                                    {rescuers.find(r => r.id === selectedPet.custody_rescuer_id)?.full_name || 'Shelter Oshe'}
+                                                </p>
+                                                <p className="text-xs text-amber-700 mt-1">Check with this organization for updates.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {selectedPet.custody_status === 'pickup_scheduled' && (
+                                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 mb-6 animate-pulse-slow">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Truck className="text-emerald-600" size={20} />
+                                            <h4 className="font-black text-emerald-800 uppercase text-sm">Pickup Scheduled</h4>
+                                        </div>
+                                        <div className="bg-white p-4 rounded-xl border border-emerald-200 shadow-sm space-y-2">
+                                            <div className="flex items-center gap-2 text-emerald-900">
+                                                <Calendar size={16} />
+                                                <span className="font-bold">{selectedPet.pickup_date}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-emerald-900">
+                                                <Clock size={16} />
+                                                <span className="font-bold">{selectedPet.pickup_time}</span>
+                                            </div>
+                                            {selectedPet.pickup_note && (
+                                                <div className="pt-2 border-t border-emerald-100 mt-2">
+                                                    <p className="text-xs text-emerald-700 italic">" {selectedPet.pickup_note} "</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-emerald-600 mt-3 text-center font-medium">
+                                            Rescuer/Shelter has accepted this request. They will pick up the pet and hold it until the owner claims it.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {selectedPet.custody_status === 'in_shelter' && (
+                                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-6">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Home className="text-blue-600" size={20} />
+                                            <h4 className="font-black text-blue-800 uppercase text-sm">Safe In Shelter</h4>
+                                        </div>
+                                        <p className="text-sm text-blue-900">
+                                            This pet has been picked up and is safe at the shelter/rescuer facility.
+                                        </p>
+                                    </div>
+                                )}
                             {/* Details */}
                             <div>
                                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Details</h3>
@@ -369,16 +769,41 @@ export default function LostAndFound() {
                                     </button>
                                 </div>
 
+                                {/* CLAIM PET BUTTON (For Owners finding their pets) */}
+                                {selectedPet.report_type === 'found' && user && user.id !== selectedPet.owner_id && (
+                                    <button 
+                                        onClick={() => openClaimModal(selectedPet)}
+                                        className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-lg shadow-indigo-200 hover:shadow-xl transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Heart size={20} className="fill-white" />
+                                        I am the Real Owner
+                                    </button>
+                                )}
+
                                 {/* OWNER ACTIONS */}
                                 {session?.user?.id === selectedPet.owner_id && (
                                     <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
                                         <p className="text-xs font-bold text-slate-400 uppercase text-center mb-3">Owner Actions</p>
                                         <button 
-                                            onClick={handleMarkReunitedFromModal}
+                                            onClick={() => handleMarkReunitedFromModal(selectedPet.id)}
                                             className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-200 transition-all hover:-translate-y-1"
                                         >
                                             <CheckCircle size={20} /> Mark as Reunited
                                         </button>
+                                    </div>
+                                )}
+
+                                {/* RESCUER ACTIONS (Accept Custody) */}
+                                {session?.user?.id === selectedPet.custody_rescuer_id && selectedPet.custody_status === 'rescuer_notified' && (
+                                     <div className="mt-4 pt-4 border-t border-dashed border-amber-200">
+                                        <p className="text-xs font-bold text-amber-500 uppercase text-center mb-3">Rescuer Actions</p>
+                                        <button 
+                                            onClick={() => openPickupModal(selectedPet.id)}
+                                            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-amber-200 transition-all hover:-translate-y-1"
+                                        >
+                                            <Shield size={20} /> Accept & Schedule Pickup
+                                        </button>
+                                        <p className="text-center text-xs text-slate-400 mt-2">This will notify the finder you are coming.</p>
                                     </div>
                                 )}
                             </div>
@@ -388,6 +813,9 @@ export default function LostAndFound() {
             </div>
         </div>
       )}
+
+
+
 
       {/* SUCCESS MODAL OVERLAY */}
       {showSuccessModal && (
@@ -422,6 +850,66 @@ export default function LostAndFound() {
                           className="w-full py-4 rounded-xl text-slate-500 font-bold hover:bg-slate-50 transition-colors"
                       >
                           No, Skip for Now
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Pickup Schedule Modal */}
+      {showPickupModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-white rounded-3xl overflow-hidden max-w-md w-full shadow-2xl relative p-8">
+                  <div className="text-center mb-6">
+                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
+                           <Truck size={32} />
+                      </div>
+                      <h2 className="text-2xl font-black text-slate-800">Schedule Pickup</h2>
+                      <p className="text-slate-500 mt-2">When will you pick up this pet?</p>
+                  </div>
+
+                  <div className="space-y-4 mb-8">
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Date</label>
+                          <input 
+                              type="date" 
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-700 outline-none focus:border-emerald-500 transition-colors"
+                              value={pickupDate}
+                              onChange={(e) => setPickupDate(e.target.value)}
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Time</label>
+                          <input 
+                              type="time" 
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-700 outline-none focus:border-emerald-500 transition-colors"
+                              value={pickupTime}
+                              onChange={(e) => setPickupTime(e.target.value)}
+                          />
+                      </div>
+                       <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Note for Finder (Optional)</label>
+                          <textarea 
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-medium text-slate-600 outline-none focus:border-emerald-500 transition-colors resize-none h-20"
+                              placeholder="e.g. I'll be in a marked van..."
+                              value={pickupNote}
+                              onChange={(e) => setPickupNote(e.target.value)}
+                          />
+                      </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                      <button 
+                          onClick={submitPickupSchedule}
+                          className="w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-lg shadow-xl shadow-emerald-200 hover:-translate-y-1 transition-transform"
+                      >
+                          Confirm Schedule
+                      </button>
+                      <button 
+                          onClick={() => setShowPickupModal(false)}
+                          className="w-full py-4 rounded-xl text-slate-500 font-bold hover:bg-slate-50 transition-colors"
+                      >
+                          Cancel
                       </button>
                   </div>
               </div>
@@ -482,10 +970,21 @@ export default function LostAndFound() {
                                     <PawPrint size={48} />
                                 </div>
                             )}
-                            <div className="absolute top-4 left-4 flex gap-2">
-                                <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-lg ${pet.report_type === 'lost' ? 'bg-red-600 text-white' : 'bg-green-500 text-white'}`}>
-                                    {pet.report_type}
+                            <div className="absolute top-4 left-4 flex flex-col gap-2">
+                                <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-lg w-fit ${pet.status === 'lost' ? 'bg-red-600 text-white' : 'bg-green-500 text-white'}`}>
+                                    {pet.status === 'lost' ? 'LOST' : 'FOUND'}
                                 </span>
+                                
+                                {pet.custody_status === 'rescuer_notified' && (
+                                    <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg bg-amber-500 text-white w-fit flex items-center gap-1">
+                                        <Truck size={12} /> Pickup Request
+                                    </span>
+                                )}
+                                {pet.custody_status === 'pickup_scheduled' && (
+                                    <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg bg-emerald-500 text-white w-fit flex items-center gap-1 animate-pulse">
+                                        <Clock size={12} /> Pickup Scheduled
+                                    </span>
+                                )}
                             </div>
                         </div>
                         <div className="p-6">
@@ -508,6 +1007,34 @@ export default function LostAndFound() {
                                         <p className="text-sm text-slate-500 line-clamp-2">{pet.distinctive_features || pet.description || "Click for details"}</p>
                                     </div>
                                 </div>
+
+                                {pet.custody_status === 'rescuer_notified' && (
+                                    <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100 flex items-start gap-3">
+                                        <div className="p-1.5 bg-amber-100 rounded-full text-amber-600 mt-0.5">
+                                            <Shield size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-amber-800 uppercase tracking-wide">Pickup Arranged</p>
+                                            <p className="text-xs text-amber-700">
+                                                Rescuer <b>{rescuers.find(r => r.id === pet.custody_rescuer_id)?.full_name || 'Organization'}</b> has been notified to take custody.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {pet.custody_status === 'pickup_scheduled' && (
+                                    <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100 flex items-start gap-3">
+                                        <div className="p-1.5 bg-emerald-100 rounded-full text-emerald-600 mt-0.5">
+                                            <CheckCircle size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Pickup Confirmed</p>
+                                            <p className="text-xs text-emerald-700">
+                                                Rescuer/Shelter has accepted this pet until the owner picks it up.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <button className="w-full py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 group-hover:bg-slate-900 group-hover:text-white">
@@ -530,9 +1057,49 @@ export default function LostAndFound() {
                             </div>
                         </div>
 
+                        {/* Mode Explanation */}
+                        <div className={`mb-8 p-4 rounded-xl border ${reportType === 'lost' ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+                            <div className="flex gap-3">
+                                <div className={`p-2 rounded-full h-fit ${reportType === 'lost' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                                    {reportType === 'lost' ? <AlertTriangle size={20} /> : <Search size={20} />}
+                                </div>
+                                <div>
+                                    <h3 className={`font-bold mb-1 ${reportType === 'lost' ? 'text-red-900' : 'text-green-900'}`}>
+                                        {reportType === 'lost' ? 'Reporting a Missing Pet' : 'Reporting a Found Animal'}
+                                    </h3>
+                                    <p className={`text-sm leading-relaxed ${reportType === 'lost' ? 'text-red-700' : 'text-green-700'}`}>
+                                        {reportType === 'lost' 
+                                            ? "Select this if your own pet is missing. We will broadcast an immediate alert to nearby users, vet clinics, and rescuers. You can also generate a missing poster instantly."
+                                            : "Select this if you have found a stray or lost animal. Please report their location and physical details to help the owner find them. If you can't hold the animal, this alert will notify rescuers."
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InputGroup label="Pet Name" info={reportType === 'found' ? 'Default: Unknown' : ''}>
-                                <input className="input-field" value={petName} onChange={e => setPetName(e.target.value)} required placeholder="Pet's Name" />
+                            <InputGroup label="Pet Name" info={reportType === 'found' ? 'Check box if name is unknown' : ''}>
+                                <div className="space-y-2">
+                                    <input 
+                                        className={`input-field ${nameUnknown ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''}`} 
+                                        value={petName} 
+                                        onChange={e => setPetName(e.target.value)} 
+                                        required 
+                                        disabled={nameUnknown}
+                                        placeholder={nameUnknown ? "Name Unknown" : "Pet's Name"} 
+                                    />
+                                    {reportType === 'found' && (
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={nameUnknown} 
+                                                onChange={handleNameUnknownChange}
+                                                className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 border-gray-300"
+                                            />
+                                            <span className="text-xs font-bold text-slate-500">I don't know the name (Use "Unknown")</span>
+                                        </label>
+                                    )}
+                                </div>
                             </InputGroup>
                             
                             <InputGroup label="Species">
@@ -672,7 +1239,7 @@ export default function LostAndFound() {
                                 </select>
                             </InputGroup>
                             <InputGroup label="Contact Phone">
-                                <input type="tel" className="input-field" value={contactPhone} onChange={e => setContactPhone(e.target.value)} required placeholder="(555) 123-4567" />
+                                <input type="tel" className="input-field" value={contactPhone} onChange={e => setContactPhone(e.target.value)} required placeholder="(+94) 76 123 4567" />
                             </InputGroup>
                         </div>
                         
@@ -688,6 +1255,115 @@ export default function LostAndFound() {
                             </label>
                         </div>
                     </Section>
+
+                    {/* E. FOUND PET ACTIONS (Custody & Health) */}
+                    {reportType === 'found' && (
+                        <div className="bg-white/60 backdrop-blur-sm p-6 rounded-2xl border border-white/80 shadow-sm">
+                            <h3 className="text-lg font-black text-slate-800 mb-6 uppercase tracking-wide border-b border-slate-100 pb-2">E. Found Pet Actions</h3>
+                            
+                            {/* Custody Selector */}
+                            <div className="mb-6">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Custody Status</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setCustodyStatus('user_holding')}
+                                        className={`p-4 rounded-xl border-2 text-left transition-all ${custodyStatus === 'user_holding' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white hover:border-emerald-200'}`}
+                                    >
+                                        <div className="flex items-center gap-2 font-bold text-slate-800 mb-1">
+                                            <Shield size={18} className={custodyStatus === 'user_holding' ? 'text-emerald-600' : 'text-slate-400'} />
+                                            I can hold the pet
+                                        </div>
+                                        <p className="text-xs text-slate-500">I will keep them safe until the owner is found.</p>
+                                    </button>
+
+                                    <button 
+                                        type="button"
+                                        onClick={() => setCustodyStatus('rescuer_notified')}
+                                        className={`p-4 rounded-xl border-2 text-left transition-all ${custodyStatus === 'rescuer_notified' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white hover:border-amber-200'}`}
+                                    >
+                                        <div className="flex items-center gap-2 font-bold text-slate-800 mb-1">
+                                            <CheckCircle size={18} className={custodyStatus === 'rescuer_notified' ? 'text-amber-600' : 'text-slate-400'} />
+                                            I need a Rescuer/Shelter
+                                        </div>
+                                        <p className="text-xs text-slate-500">I cannot hold the pet. Notify a professional to pick them up.</p>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Rescuer Select (Only if needed) */}
+                            {custodyStatus === 'rescuer_notified' && (
+                                <div className="mb-6 p-4 bg-amber-50/50 rounded-xl border border-amber-100">
+                                    <InputGroup label="Select Rescuer/Shelter to Notify">
+                                        <select 
+                                            value={selectedRescuer}
+                                            onChange={(e) => setSelectedRescuer(e.target.value)}
+                                            required={custodyStatus === 'rescuer_notified'}
+                                            className="input-field"
+                                        >
+                                            <option value="">Select a nearby rescuer...</option>
+                                            {rescuers.map(r => (
+                                                <option key={r.id} value={r.id}>{r.full_name || 'Organization'} ({r.location || 'Unknown Area'})</option>
+                                            ))}
+                                        </select>
+                                    </InputGroup>
+                                </div>
+                            )}
+
+                            {/* Injury Toggle */}
+                            <div className="pt-4 border-t border-slate-100">
+                                <div className="flex items-center gap-3 mb-4">
+                                     <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={isInjured} onChange={e => setIsInjured(e.target.checked)} />
+                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+                                    </label>
+                                    <div>
+                                        <p className={`font-bold text-sm ${isInjured ? 'text-rose-600' : 'text-slate-600'}`}>Is the animal injured?</p>
+                                        <p className="text-xs text-slate-400">Enable this to provide medical details.</p>
+                                    </div>
+                                </div>
+
+                                {isInjured && (
+                                    <div className="space-y-4">
+                                        <InputGroup label="Injury Details">
+                                            <textarea 
+                                                className="input-field h-24 resize-none border-rose-200 focus:ring-rose-500" 
+                                                value={injuryDetails} 
+                                                onChange={e => setInjuryDetails(e.target.value)} 
+                                                placeholder="Describe visible injuries, bleeding, limping, etc..."
+                                                required={isInjured}
+                                            />
+                                        </InputGroup>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Injury Photos (Optional)</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {injuryImages.map((img, index) => (
+                                                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 group">
+                                                        <img src={img.preview} alt="Injury" className="w-full h-full object-cover" />
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => removeInjuryImage(index)}
+                                                            className="absolute top-1 right-1 p-1 bg-white/90 text-rose-500 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {injuryImages.length < 3 && (
+                                                    <label className="aspect-square rounded-lg border-2 border-dashed border-rose-200 hover:border-rose-400 hover:bg-rose-50 transition-all flex flex-col items-center justify-center cursor-pointer text-rose-400">
+                                                        <Camera size={20} />
+                                                        <span className="text-[10px] font-bold mt-1">Add Photo</span>
+                                                        <input type="file" accept="image/*" className="hidden" onChange={handleInjuryImageChange} />
+                                                    </label>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {msg && (
                         <div className={`p-4 rounded-xl flex items-center gap-3 font-bold ${msg.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
@@ -716,25 +1392,122 @@ export default function LostAndFound() {
             </div>
         )}
       </div>
+      <style>{inputFieldStyles}</style>
 
-      <style>{`
-        .input-field {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.7);
-            border: 1px solid #e2e8f0;
-            padding: 0.75rem 1rem;
-            border-radius: 0.75rem;
-            font-size: 0.95rem;
-            outline: none;
-            transition: all 0.2s;
-            color: #1e293b;
-        }
-        .input-field:focus {
-            background: white;
-            border-color: #f43f5e;
-            box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.1);
-        }
-      `}</style>
+
+      {/* CLAIM CONFIRMATION MODAL */}
+      {showClaimModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowClaimModal(false)} />
+            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+                <div className="bg-gradient-to-r from-indigo-600 to-purple-700 p-6 text-center shrink-0">
+                    <h3 className="text-xl font-black text-white mb-1">Claim This Pet</h3>
+                    <p className="text-indigo-100 text-xs">Help the finder verify you are the real owner.</p>
+                </div>
+                
+                <div className="p-6 overflow-y-auto custom-scrollbar">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Your Name</label>
+                            <input 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={claimName}
+                                onChange={e => setClaimName(e.target.value)}
+                                placeholder="Full Name"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Contact Info</label>
+                            <input 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={claimContact}
+                                onChange={e => setClaimContact(e.target.value)}
+                                placeholder="Phone number or Email"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Proof Details <span className="text-red-500">*</span></label>
+                            <textarea 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px] resize-none"
+                                value={claimProof}
+                                onChange={e => setClaimProof(e.target.value)}
+                                placeholder="Describe unique markings, collar, nicknames, or behavior..."
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Proof Image (Optional)</label>
+                            <div 
+                                onClick={() => claimFileRef.current.click()}
+                                className="border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
+                            >
+                                {claimImage ? (
+                                    <div className="text-center">
+                                        <span className="text-sm font-bold text-indigo-600 truncate max-w-[200px] block">{claimImage.name}</span>
+                                        <span className="text-xs text-slate-400">Click to change</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Camera className="text-slate-400 mb-2" />
+                                        <span className="text-xs font-bold text-slate-400">Upload Photo of You + Pet</span>
+                                    </>
+                                )}
+                            </div>
+                            <input ref={claimFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => setClaimImage(e.target.files[0])} />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mt-6">
+                        <button 
+                            onClick={() => setShowClaimModal(false)}
+                            className="py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmClaimPet}
+                            className="py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            Submit Claim <Send size={16} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* HOORAY MODAL */}
+      {showHoorayModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+               <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    {/* Simple CSS Confetti (or placeholder for effect) */}
+               </div>
+               <div className="bg-white rounded-[2rem] p-10 max-w-md w-full shadow-2xl text-center relative overflow-hidden">
+                   <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-400 via-amber-400 to-emerald-400"></div>
+                   
+                   <motion.div 
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1, rotate: 360 }}
+                        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                        className="w-24 h-24 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500 shadow-inner"
+                    >
+                       <Heart size={48} fill="currentColor" />
+                   </motion.div>
+                   
+                   <h2 className="text-4xl font-black text-slate-800 mb-2">Hooray!</h2>
+                   <p className="text-lg text-slate-500 mb-8 font-medium">
+                       Another tail wagging happily. Thank you for being a hero! 
+                   </p>
+                   
+                   <button 
+                        onClick={() => { setShowHoorayModal(false); setActiveTab('reunited'); }}
+                        className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:translate-y-[-2px]"
+                    >
+                       See Reunited Pets
+                   </button>
+               </div>
+          </div>
+      )}
+
     </div>
   );
 }

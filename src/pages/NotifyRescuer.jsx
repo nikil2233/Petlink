@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Camera, AlertTriangle, Send, X, Shield, Info, Heart } from 'lucide-react';
+import { MapPin, Camera, AlertTriangle, Send, X, Shield, Info, Heart, Upload, Navigation } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 import { useAuth } from '../context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function NotifyRescuer() {
   const navigate = useNavigate();
@@ -32,9 +33,10 @@ export default function NotifyRescuer() {
 
   const fetchRescuers = async () => {
       try {
+          // Only fetch necessary fields
           const { data, error } = await supabase
             .from('profiles')
-            .select('id, full_name, role, location, address, latitude, longitude')
+            .select('id, full_name, role, location')
             .in('role', ['rescuer', 'shelter']);
           
           if (error) throw error;
@@ -66,7 +68,7 @@ export default function NotifyRescuer() {
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('rescue-images')
       .upload(filePath, file);
 
@@ -100,6 +102,7 @@ export default function NotifyRescuer() {
     setMsg(null);
 
     try {
+        // Ensure profile exists (sanity check)
         const { error: profileError } = await supabase
             .from('profiles')
             .upsert(
@@ -133,6 +136,7 @@ export default function NotifyRescuer() {
       if (error) throw error;
 
       setMsg({ type: 'success', text: 'Report submitted successfully!' });
+      // Reset form
       setDescription('');
       setLocationName('');
       setCoords(null);
@@ -149,303 +153,324 @@ export default function NotifyRescuer() {
     }
   };
 
-  if (authLoading) return <div className="page-container flex justify-center items-center"><p className="text-primary font-bold">Loading...</p></div>;
+  const urgencyLevels = [
+    { id: 'low', label: 'Low', color: 'bg-emerald-500', hover: 'hover:bg-emerald-600', ring: 'ring-emerald-200' },
+    { id: 'medium', label: 'Medium', color: 'bg-amber-500', hover: 'hover:bg-amber-600', ring: 'ring-amber-200' },
+    { id: 'high', label: 'High', color: 'bg-orange-500', hover: 'hover:bg-orange-600', ring: 'ring-orange-200' },
+    { id: 'critical', label: 'Critical', color: 'bg-rose-600', hover: 'hover:bg-rose-700', ring: 'ring-rose-200' },
+  ];
 
-  // --- STYLES FOR GLASS EFFECT UI ---
-  const glassCardStyle = {
-    background: 'rgba(255, 255, 255, 0.65)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-    borderRadius: '2rem',
-    border: '1px solid rgba(255, 255, 255, 0.8)',
-    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
-    overflow: 'hidden'
-  };
-
-  const glassInputStyle = {
-    background: 'rgba(255, 255, 255, 0.8)',
-    border: '1px solid rgba(255, 255, 255, 0.6)',
-    borderRadius: '1rem',
-    padding: '1rem',
-    width: '100%',
-    backdropFilter: 'blur(5px)',
-    fontSize: '1rem',
-    color: '#334155',
-    outline: 'none',
-    transition: 'all 0.3s'
-  };
-
-  const getUrgencyButtonStyle = (level) => {
-      const isSelected = urgency === level;
-      const base = {
-          flex: 1,
-          padding: '1rem 0.5rem',
-          borderRadius: '1rem',
-          border: 'none',
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          fontSize: '0.85rem',
-          cursor: 'pointer',
-          transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-          boxShadow: isSelected ? '0 10px 20px rgba(0,0,0,0.15)' : '0 4px 6px rgba(0,0,0,0.05)',
-          transform: isSelected ? 'translateY(-3px)' : 'none',
-          color: isSelected ? 'white' : '#64748b'
-      };
-
-      const colors = {
-          low: isSelected ? 'linear-gradient(135deg, #14b8a6, #0d9488)' : 'rgba(255,255,255,0.7)',
-          medium: isSelected ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'rgba(255,255,255,0.7)',
-          high: isSelected ? 'linear-gradient(135deg, #f97316, #ea580c)' : 'rgba(255,255,255,0.7)',
-          critical: isSelected ? 'linear-gradient(135deg, #f43f5e, #be123c)' : 'rgba(255,255,255,0.7)',
-      };
-
-      return { ...base, background: colors[level] };
-  };
+  if (authLoading) return (
+    <div className="min-h-screen flex justify-center items-center bg-slate-950">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+    </div>
+  );
 
   if (!session) {
     return (
-      <div className="page-container flex items-center justify-center" style={{ 
-          backgroundImage: 'linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%)',
-          minHeight: '100vh',
-          paddingBottom: 0
-      }}>
-          <div style={{ ...glassCardStyle, padding: '3rem', maxWidth: '500px', textAlign: 'center' }}>
-              <Shield size={64} className="text-primary mb-4 mx-auto" style={{ filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }} />
-              <h2 className="text-3xl font-bold mb-3" style={{ color: '#0f172a' }}>Welcome to PetLink</h2>
-              <p className="text-muted text-lg mb-8">Please log in to report a stray animal.</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 relative overflow-hidden p-4">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1535930749574-1399327ce78f?q=80&w=2000')] bg-cover bg-center opacity-20 blur-sm"></div>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-900/80 backdrop-blur-xl p-12 rounded-[2.5rem] max-w-lg w-full text-center shadow-2xl border border-white/10 relative z-10"
+          >
+              <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Shield size={40} className="text-orange-500" />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-3">Welcome to PetLink</h2>
+              <p className="text-slate-400 text-lg mb-8 leading-relaxed">Please log in to report a stray animal and help us save lives.</p>
               <button 
                 onClick={() => navigate('/auth')} 
-                className="btn" 
-                style={{ 
-                    background: 'linear-gradient(45deg, #fbbf24, #f59e0b)', 
-                    color: 'white', 
-                    width: '100%', 
-                    padding: '1rem', 
-                    fontSize: '1.1rem',
-                    boxShadow: '0 10px 20px rgba(245, 158, 11, 0.3)'
-                }}
+                className="w-full bg-white text-slate-900 font-bold py-4 rounded-xl hover:bg-slate-200 transition-all shadow-lg active:scale-95"
               >
                   Login / Sign Up
               </button>
-          </div>
+          </motion.div>
       </div>
     );
   }
 
   if (userRole !== 'user') {
       return (
-        <div className="page-container flex items-center justify-center" style={{ background: '#f8fafc' }}>
-            <div style={{ ...glassCardStyle, padding: '3rem', maxWidth: '500px', textAlign: 'center' }}>
-                <Shield size={64} className="text-secondary mb-4 mx-auto" />
-                <h2 className="mb-2">Restricted Access</h2>
-                <p className="text-muted mb-6">Only Citizens can submit rescue reports.</p>
-                <button onClick={() => navigate('/rescuer-feed')} className="btn btn-primary w-full shadow-lg">Go to Rescuer Feed</button>
-            </div>
+        <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-900 p-12 rounded-[2rem] max-w-lg w-full text-center shadow-xl border border-slate-800"
+            >
+                <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Shield size={40} className="text-amber-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Restricted Access</h2>
+                <p className="text-slate-400 mb-8">Only Citizens can submit rescue reports. Rescuers should check the feed.</p>
+                <button 
+                    onClick={() => navigate('/rescuer-feed')} 
+                    className="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/20"
+                >
+                    Go to Rescuer Feed
+                </button>
+            </motion.div>
         </div>
       );
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 50 } }
+  };
+
   return (
-    <div style={{ 
-        minHeight: '100vh',
-        width: '100%',
-        marginTop: '0px', 
-        paddingTop: '80px', // Header offset
-        paddingBottom: '40px',
-        paddingLeft: '20px',
-        paddingRight: '20px',
-        background: 'url("https://images.unsplash.com/photo-1548199973-03cce0bbc87b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80") no-repeat center center fixed',
-        backgroundSize: 'cover',
-    }}>
-      {/* Dark overlay for readability */}
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.2)', zIndex: 0 }}></div>
+    <div className="min-h-screen relative overflow-hidden bg-slate-950 pt-24 pb-12 px-4 md:px-8 font-sans">
+      
+      {/* Background Decor */}
+      <div className="absolute top-0 right-0 w-[80vh] h-[80vh] bg-orange-500/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
+      <div className="absolute bottom-0 left-0 w-[60vh] h-[60vh] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none translate-y-1/2 -translate-x-1/2"></div>
 
-      <div className="container" style={{ position: 'relative', zIndex: 1, maxWidth: '1200px' }}>
-          
-        <div style={{ ...glassCardStyle, display: 'flex', flexDirection: 'column', mdFlexDirection: 'row', minHeight: '80vh' }}>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
             
-            {/* LEFT SIDE: Visuals & Intro (Desktop only actually visually split, on mobile standard stack) */}
-            <div style={{ 
-                flex: '1', 
-                background: 'rgba(255,255,255,0.4)', 
-                padding: '3rem', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden'
-            }}>
-                {/* Decorative blobs */}
-                <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '200px', height: '200px', background: 'rgba(245, 158, 11, 0.2)', borderRadius: '50%', filter: 'blur(40px)' }}></div>
-                <div style={{ position: 'absolute', bottom: '10%', right: '-10%', width: '300px', height: '300px', background: 'rgba(20, 184, 166, 0.2)', borderRadius: '50%', filter: 'blur(50px)' }}></div>
+            {/* LEFT SIDE: Visuals & Context */}
+            <motion.div 
+                initial="hidden"
+                animate="visible"
+                variants={containerVariants}
+                className="flex-1 lg:sticky lg:top-28 pt-4"
+            >
+                <motion.div variants={itemVariants} className="inline-flex items-center gap-2 bg-slate-900/50 backdrop-blur-md border border-white/5 px-4 py-2 rounded-full shadow-sm mb-8">
+                    <AlertTriangle size={16} className="text-orange-500 fill-orange-500/20" />
+                    <span className="text-sm font-bold text-slate-300">Urgent Help Needed</span>
+                </motion.div>
 
-                <div style={{ position: 'relative', zIndex: 10 }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '50px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
-                        <Heart size={16} className="text-accent" fill="currentColor" />
-                        <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#475569' }}>Save a Life Today</span>
-                    </div>
+                <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl font-black text-white mb-6 leading-[1.1] tracking-tight">
+                    Every Second <br/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-200">Counts.</span>
+                </motion.h1>
+                
+                <motion.p variants={itemVariants} className="text-xl text-slate-400 mb-10 leading-relaxed max-w-xl font-medium">
+                    Your quick action can save a life. Use this form to alert our network of rescuers immediately.
+                </motion.p>
 
-                    <h1 style={{ fontSize: '3.5rem', lineHeight: '1.1', marginBottom: '1.5rem', background: 'linear-gradient(45deg, #1e293b, #475569)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        Notify a <br/><span style={{ color: '#f59e0b', WebkitTextFillColor: '#f59e0b' }}>Rescuer</span>
-                    </h1>
-                    
-                    <p style={{ fontSize: '1.15rem', color: '#475569', marginBottom: '3rem', lineHeight: '1.6' }}>
-                        Found a furry friend in trouble? Use this form to alert nearby shelters immediately. Your small action makes a huge difference.
-                    </p>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                        <div style={{ background: 'rgba(255,255,255,0.6)', padding: '1rem', borderRadius: '1rem' }}>
-                            <MapPin className="text-primary mb-2" size={24} />
-                            <h4 className="mb-1">Pin Location</h4>
-                            <p className="text-sm text-muted">Exact coords help us find them.</p>
+                {/* Hero Image */}
+                <motion.div variants={itemVariants} className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/10 mb-8 max-w-lg group">
+                    <div className="absolute inset-0 bg-slate-900/20 group-hover:bg-slate-900/0 transition-colors duration-500 z-10"></div>
+                    <img 
+                        src="https://images.unsplash.com/photo-1535930749574-1399327ce78f?q=80&w=1000" 
+                        alt="Injured dog needing help" 
+                        className="w-full h-auto object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-700 scale-105 group-hover:scale-100"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-20"></div>
+                    <div className="absolute bottom-6 left-6 text-white z-30">
+                        <div className="flex items-center gap-2 font-bold mb-1">
+                            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                            <span className="text-red-400 text-sm uppercase tracking-wider">Live & Active</span>
                         </div>
-                        <div style={{ background: 'rgba(255,255,255,0.6)', padding: '1rem', borderRadius: '1rem' }}>
-                            <Camera className="text-secondary mb-2" size={24} />
-                            <h4 className="mb-1">Snap Photo</h4>
-                            <p className="text-sm text-muted">Visuals help assess urgency.</p>
+                        <p className="text-lg font-bold text-white/90">Rescuers are standing by</p>
+                    </div>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
+                    <div className="bg-slate-900/50 p-5 rounded-2xl border border-white/5 flex items-start gap-4">
+                        <div className="p-3 bg-slate-800 rounded-xl text-orange-400">
+                            <MapPin size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-white">Pin Location</h4>
+                            <p className="text-sm text-slate-400 mt-1">Precise coordinates are vital.</p>
                         </div>
                     </div>
-                </div>
-            </div>
+                    <div className="bg-slate-900/50 p-5 rounded-2xl border border-white/5 flex items-start gap-4">
+                        <div className="p-3 bg-slate-800 rounded-xl text-amber-400">
+                            <Camera size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-white">Snap Photo</h4>
+                            <p className="text-sm text-slate-400 mt-1">Help us assess the situation.</p>
+                        </div>
+                    </div>
+                </motion.div>
+            </motion.div>
 
             {/* RIGHT SIDE: The Form */}
-            <div style={{ flex: '1.2', padding: '3rem', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(30px)' }}>
-                {msg && (
-                    <div className={`alert ${msg.type === 'success' ? 'success' : 'error'} mb-6`} style={{ borderRadius: '1rem' }}>
-                        {msg.type === 'success' ? <Shield size={18} /> : <AlertTriangle size={18} />}
-                        <span>{msg.text}</span>
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="flex-1 w-full max-w-2xl"
+            >
+                <div className="bg-white/90 backdrop-blur-xl border border-white/20 p-6 md:p-8 rounded-[2.5rem] shadow-2xl shadow-black/50">
                     
-                    {/* Urgency */}
-                    <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '0.75rem' }}>URGENCY LEVEL</label>
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                            {['low', 'medium', 'high', 'critical'].map((level) => (
-                                <button
-                                    key={level}
-                                    type="button"
-                                    onClick={() => setUrgency(level)}
-                                    style={getUrgencyButtonStyle(level)}
-                                >
-                                    {level}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    <h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <span className="w-8 h-1 bg-orange-500 rounded-full"></span>
+                        Submit Report
+                    </h3>
 
-                    {/* Location */}
-                    <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '0.75rem' }}>LOCATION</label>
-                        <div style={{ borderRadius: '1.5rem', overflow: 'hidden', border: '2px solid white', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '1rem' }}>
-                           <div style={{ height: '200px', width: '100%' }}>
-                                <MapPicker onLocationSelect={(loc) => setCoords(loc)} />
-                           </div>
-                        </div>
-                        <input 
-                            type="text" 
-                            style={glassInputStyle}
-                            placeholder="Add address details (e.g. Opposite the park)..."
-                            value={locationName}
-                            onChange={(e) => setLocationName(e.target.value)}
-                        />
-                    </div>
+                    <AnimatePresence>
+                        {msg && (
+                            <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}
+                            >
+                                {msg.type === 'success' ? <Shield size={20} /> : <AlertTriangle size={20} />}
+                                <span className="font-medium">{msg.text}</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
-                    {/* Photo + Description Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                        <div>
-                             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '0.75rem' }}>PHOTO</label>
-                             <div 
-                                onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                                style={{ 
-                                    height: '120px', 
-                                    border: '2px dashed #cbd5e1', 
-                                    borderRadius: '1.5rem', 
-                                    display: 'flex', 
-                                    flexDirection: 'column',
-                                    alignItems: 'center', 
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    background: imagePreview ? `url(${imagePreview}) center/cover` : '#f8fafc',
-                                    position: 'relative',
-                                    transition: 'all 0.2s'
-                                }}
-                                className="hover:border-primary"
-                             >
-                                {!imagePreview && (
-                                    <>
-                                        <Camera size={24} className="text-muted mb-2" />
-                                        <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#94a3b8' }}>Upload</span>
-                                    </>
-                                )}
-                                {imagePreview && (
-                                    <div onClick={removeImage} style={{ position: 'absolute', top: -5, right: -5, background: 'white', borderRadius: '50%', padding: '0.25rem', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
-                                        <X size={14} className="text-danger" />
-                                    </div>
-                                )}
-                                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-                             </div>
-                        </div>
+                    <form onSubmit={handleSubmit} className="space-y-8">
                         
+                        {/* Urgency */}
                         <div>
-                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '0.75rem' }}>RESCUER</label>
-                            <div style={{ position: 'relative' }}>
-                                <select 
-                                    value={selectedRescuer}
-                                    onChange={(e) => setSelectedRescuer(e.target.value)}
-                                    style={{ ...glassInputStyle, height: '120px', paddingTop: '1rem', appearance: 'none' }}
-                                    required
-                                >
-                                    <option value="">Select...</option>
-                                    {rescuers.map(r => (
-                                        <option key={r.id} value={r.id}>{r.full_name}</option>
-                                    ))}
-                                </select>
-                                <Info style={{ position: 'absolute', top: '1rem', right: '1rem', pointerEvents: 'none', color: '#94a3b8' }} size={16} />
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Urgency Level</label>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {urgencyLevels.map((level) => (
+                                    <button
+                                        key={level.id}
+                                        type="button"
+                                        onClick={() => setUrgency(level.id)}
+                                        className={`py-3 px-2 rounded-xl text-sm font-bold transition-all duration-300 ${
+                                            urgency === level.id 
+                                                ? `${level.color} text-white shadow-lg scale-105` 
+                                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        {level.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '0.75rem' }}>DETAILS</label>
-                        <textarea 
-                            style={glassInputStyle}
-                            rows="2"
-                            placeholder="Describe the animal or situation..."
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            required
-                        />
-                    </div>
+                        {/* Location */}
+                        <div className="space-y-4">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Location</label>
+                            
+                            <div className="h-64 w-full rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner relative group">
+                                <div className="absolute inset-0 z-0">
+                                   <MapPicker onLocationSelect={(loc) => setCoords(loc)} />
+                                </div>
+                                {!coords && (
+                                    <div className="absolute inset-0 pointer-events-none bg-slate-900/5 flex items-center justify-center">
+                                        <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-sm text-xs font-bold text-slate-500 flex items-center gap-2">
+                                            <Navigation size={14} /> Tap map to pin
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="relative">
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                <input 
+                                    type="text" 
+                                    placeholder="Add address details (e.g. Opposite the park)..."
+                                    value={locationName}
+                                    onChange={(e) => setLocationName(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 outline-none focus:ring-2 focus:ring-orange-400 transition-all placeholder:text-slate-400 focus:bg-white"
+                                />
+                            </div>
+                        </div>
 
-                    <button 
-                        type="submit" 
-                        disabled={loading}
-                        style={{ 
-                            background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-                            color: 'white',
-                            border: 'none',
-                            padding: '1.25rem',
-                            borderRadius: '1.5rem',
-                            fontSize: '1.1rem',
-                            fontWeight: 'bold',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.5rem',
-                            boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.4)',
-                            marginTop: '1rem',
-                            cursor: 'pointer',
-                            transition: 'transform 0.2s'
-                        }}
-                    >
-                        {loading ? 'Sending...' : <>Submit Report <Send size={20} /></>}
-                    </button>
+                        {/* Photo + Rescuer Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                             {/* Photo */}
+                            <div>
+                                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Photo</label>
+                                 <div 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`relative h-28 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${
+                                        imagePreview 
+                                            ? 'border-orange-500 bg-orange-50' 
+                                            : 'border-slate-300 hover:border-orange-400 hover:bg-orange-50/10 bg-slate-50'
+                                    }`}
+                                 >
+                                    {imagePreview ? (
+                                        <>
+                                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                            <button 
+                                                onClick={removeImage}
+                                                className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-md text-rose-500 hover:bg-rose-50 transition-colors"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload size={24} className="text-slate-400 mb-2" />
+                                            <span className="text-xs font-bold text-slate-500">Tap to Upload</span>
+                                        </>
+                                    )}
+                                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                 </div>
+                            </div>
+                            
+                             {/* Rescuer Select */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Notify Who?</label>
+                                <div className="relative">
+                                    <select 
+                                        value={selectedRescuer}
+                                        onChange={(e) => setSelectedRescuer(e.target.value)}
+                                        required
+                                        className="w-full h-28 p-4 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700 outline-none focus:ring-2 focus:ring-orange-400 transition-all appearance-none resize-none pt-4 align-top focus:bg-white"
+                                        size={4}
+                                    >
+                                        <option value="" disabled className="text-slate-400 pb-2">Select a rescuer...</option>
+                                        {rescuers.map(r => (
+                                            <option key={r.id} value={r.id} className="py-2 px-2 rounded-lg hover:bg-orange-50 cursor-pointer">
+                                                {r.full_name || 'Agencies'} ({r.location || 'All Areas'})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <div className="absolute right-4 top-4 pointer-events-none text-slate-400">
+                                        <Info size={16} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                </form>
-            </div>
+                        {/* Details */}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Additional Details</label>
+                            <textarea 
+                                rows="3"
+                                placeholder="Describe the situation, behavior, or visible injuries..."
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                required
+                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700 outline-none focus:ring-2 focus:ring-orange-400 transition-all placeholder:text-slate-400 resize-none focus:bg-white"
+                            />
+                        </div>
+
+                        {/* Submit */}
+                        <motion.button 
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="submit" 
+                            disabled={loading}
+                            className={`w-full py-4 rounded-xl font-bold text-lg text-white shadow-xl shadow-orange-500/30 transition-all flex items-center justify-center gap-2 ${
+                                loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:shadow-2xl'
+                            }`}
+                        >
+                            {loading ? (
+                                <>Sending Report...</>
+                            ) : (
+                                <>Submit Report <Send size={20} /></>
+                            )}
+                        </motion.button>
+
+                    </form>
+                </div>
+            </motion.div>
 
         </div>
       </div>

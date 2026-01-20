@@ -77,8 +77,9 @@ export default function Notifications() {
 
   const deleteNotification = async (id, e) => {
       e.stopPropagation();
-      // No confirmation for a smoother flow, or maybe a subtle undo toast (skip undo for now)
-      
+      // Store previous state for rollback
+      const previousNotifications = [...notifications];
+
       try {
           // Optimistic delete
           setNotifications(prev => prev.filter(n => n.id !== id));
@@ -91,13 +92,39 @@ export default function Notifications() {
           if (error) throw error;
       } catch (error) {
           console.error("Error deleting notification:", error);
+          // Revert optimistic update
+          setNotifications(previousNotifications);
+          alert("Failed to delete notification. Please try again.");
       }
   }
 
-  const filteredNotifications = notifications.filter(n => {
-      if (filter === 'unread') return !n.is_read;
-      return true;
-  });
+    const handleNotificationClick = async (notification) => {
+      if (!notification.is_read) {
+        await markAsRead(notification.id);
+      }
+
+      // Navigation Logic
+      switch (notification.type) {
+        case 'status_change':
+          navigate('/my-bookings');
+          break;
+        case 'alert':
+        case 'emergency':
+          navigate('/lost-feed');
+          break;
+        case 'success':
+          navigate('/success-stories');
+          break;
+        default:
+          // For generic notifications, just stay or maybe go to home
+          break;
+      }
+    };
+
+    const filteredNotifications = notifications.filter(n => {
+        if (filter === 'unread') return !n.is_read;
+        return true;
+    });
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -217,7 +244,7 @@ export default function Notifications() {
                 filteredNotifications.map((notification, index) => (
                     <div 
                         key={notification.id}
-                        className={`group relative flex items-start gap-4 p-5 rounded-2xl transition-all duration-300 animate-slide-in border ${
+                        className={`group relative flex items-start gap-4 p-5 rounded-2xl transition-all duration-300 animate-slide-in border cursor-pointer ${
                             notification.is_read 
                             ? 'bg-white border-gray-100 hover:border-gray-200' 
                             : 'bg-white border-l-4 border-l-primary shadow-md transform hover:-translate-y-0.5'
@@ -226,7 +253,7 @@ export default function Notifications() {
                             animationDelay: `${index * 50}ms`,
                             borderLeftColor: !notification.is_read ? 'var(--primary)' : '' 
                         }}
-                        onClick={() => !notification.is_read && markAsRead(notification.id)}
+                        onClick={() => handleNotificationClick(notification)}
                     >
                         {/* Icon */}
                         <div className={`mt-1 flex-shrink-0 p-2.5 rounded-full ${

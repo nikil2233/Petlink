@@ -80,7 +80,8 @@ export default function Navbar() {
           <NavPill to="/" active={isActive('/')} icon={Home}>Home</NavPill>
           <NavPill to="/notify" active={isActive('/notify')} icon={Megaphone}>Notify</NavPill>
           <NavPill to="/lost-and-found" active={isActive('/lost-and-found')} icon={AlertTriangle}>Lost & Found</NavPill>
-          <NavPill to="/rescuer-feed" active={isActive('/rescuer-feed')} icon={Activity}>Feed</NavPill>
+          <NavPill to="/rescuer-feed" active={isActive('/rescuer-feed')} icon={Activity}>Rescuer Feed</NavPill>
+          <NavPill to="/success-stories" active={isActive('/success-stories')} icon={Heart}>Success Stories</NavPill>
           
           {['rescuer', 'shelter', 'vet'].includes(userRole) ? (
             <DropdownPill 
@@ -149,7 +150,11 @@ export default function Navbar() {
                                                <div key={n.id} 
                                                     onClick={() => {
                                                         markAsRead(n.id);
-                                                        if(n.type === 'appointment_request' && userRole === 'vet') navigate('/vet-appointments');
+                                                        if (n.link) {
+                                                            navigate(n.link);
+                                                        } else if(n.type === 'appointment_request' && userRole === 'vet') {
+                                                            navigate('/vet-appointments');
+                                                        }
                                                         setShowNotifications(false);
                                                     }}
                                                     className="p-4 border-b border-slate-50 hover:bg-rose-50 cursor-pointer transition-colors"

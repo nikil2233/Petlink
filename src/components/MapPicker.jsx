@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { Locate } from 'lucide-react';
 
 // Fix for default Leaflet icon not finding images in build
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -54,14 +55,16 @@ export default function MapPicker({ onLocationSelect, initialLocation }) {
   };
 
   return (
-    <div className="map-picker-container">
+    <div className="h-full w-full relative z-0">
       <button 
         type="button"
         onClick={handleLocateMe}
-        className="btn btn-primary map-locate-btn"
+        className="absolute top-4 right-4 z-[400] bg-white p-2 rounded-lg shadow-md text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 transition-all border border-slate-200"
+        title="Use My Location"
       >
-        Use My Location
+        <Locate size={20} />
       </button>
+      
       <MapContainer 
         center={defaultCenter} 
         zoom={13} 

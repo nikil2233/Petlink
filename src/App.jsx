@@ -18,6 +18,10 @@ import './index.css';
 import './App.css';
 import 'leaflet/dist/leaflet.css';
 
+import ResetPassword from './pages/ResetPassword';
+
+import SuccessStories from './pages/SuccessStories';
+
 function App() {
   return (
     <Router>
@@ -25,6 +29,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/success-stories" element={<SuccessStories />} />
         <Route path="/notify" element={<NotifyRescuer />} />
         <Route path="/rescuer-feed" element={<RescuerFeed />} />
         <Route path="/adopt" element={<AdoptionCenter />} />

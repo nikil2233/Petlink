@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import { Navigation, MapPin, Phone, Star, Heart, Clock, Stethoscope, Mail, X } from 'lucide-react';
+import { Navigation, MapPin, Phone, Star, Heart, Clock, Stethoscope, Mail, X, Search, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -66,9 +66,10 @@ function MapBoundsHandler({ userLocation, vets }) {
 export default function FindVet() {
   const [userLocation, setUserLocation] = useState(null);
   const [vets, setVets] = useState([]);
-  const [selectedVet, setSelectedVet] = useState(null); // For Modal
-  const [savedVetIds, setSavedVetIds] = useState([]);
+  const [filteredVets, setFilteredVets] = useState([]);
+  const [selectedVet, setSelectedVet] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Haversine formula to calculate distance
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -106,6 +107,19 @@ export default function FindVet() {
     fetchVets();
   }, [userLocation]);
 
+  useEffect(() => {
+      // Filter logic
+      if (!searchQuery) {
+          setFilteredVets(vets);
+      } else {
+          const lowerQ = searchQuery.toLowerCase();
+          setFilteredVets(vets.filter(v => 
+              v.name.toLowerCase().includes(lowerQ) || 
+              v.address.toLowerCase().includes(lowerQ)
+          ));
+      }
+  }, [searchQuery, vets]);
+
   const fetchVets = async () => {
       try {
           const { data, error } = await supabase
@@ -123,15 +137,16 @@ export default function FindVet() {
               return {
                 id: v.id,
                 name: v.full_name || 'Veterinary Clinic',
+                avatar_url: v.avatar_url,
                 lat: v.latitude || mockLat,
                 lng: v.longitude || mockLng,
                 address: v.address || v.location || 'Colombo, Sri Lanka',
                 phone: v.phone || '+94 11 234 5678',
                 email: v.email || 'clinic@example.com',
                 rating: (4 + (index % 10) * 0.1).toFixed(1),
-                services: ['Vaccination', 'Sterilization', 'General Checkup', 'Emergency Care', 'Dental Cleanings'], // Mock Services
-                hours: 'Mon-Sat: 9:00 AM - 8:00 PM', // Mock Hours
-                description: 'Providing compassionate care for your furry family members with state-of-the-art facilities and experienced staff.' // Mock Desc
+                services: ['Vaccination', 'Sterilization', 'General Checkup', 'Emergency Care'],
+                hours: 'Mon-Sat: 9:00 AM - 8:00 PM',
+                description: 'Providing compassionate care for your furry family members with multiple specialties and 24/7 support.'
               };
           });
 
@@ -143,78 +158,120 @@ export default function FindVet() {
           })).sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
 
           setVets(sortedVets);
+          setFilteredVets(sortedVets);
       } catch (err) {
           console.error("Error fetching vets:", err);
       }
   };
 
-  const toggleSave = (e, id) => {
-    e.stopPropagation();
-    setSavedVetIds(prev => 
-      prev.includes(id) ? prev.filter(vid => vid !== id) : [...prev, id]
-    );
-  };
-
   return (
     <div className="h-screen pt-20 flex flex-col bg-slate-50 overflow-hidden">
       
-      {/* HEADER */}
-      <div className="px-6 py-4 flex-shrink-0">
-          <h1 className="text-3xl font-black text-slate-800">Find a Vet</h1>
-          <p className="text-slate-500 font-medium">Locate trusted professionals near you.</p>
+      {/* HEADER WITH SEARCH */}
+      <div className="px-4 md:px-8 py-6 flex-shrink-0 bg-white border-b border-slate-100 shadow-sm z-20">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                  <h1 className="text-3xl font-black text-slate-800 tracking-tight">Find a <span className="text-emerald-500">Vet</span></h1>
+                  <p className="text-slate-500 font-medium">Locate trusted professionals near you.</p>
+              </div>
+              
+              <div className="relative w-full md:w-96">
+                  <input 
+                    type="text" 
+                    placeholder="Search clinics or locations..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 bg-slate-100 border-none rounded-2xl font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              </div>
+          </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden border-t border-slate-200">
+      <div className="flex-1 flex overflow-hidden relative">
           
           {/* SIDEBAR LIST */}
-          <div className="w-full md:w-[400px] h-full overflow-y-auto bg-white border-r border-slate-200 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 flex-shrink-0">
-              <div className="p-4 space-y-4">
-                  {loadingLocation && <div className="p-4 text-center text-slate-400 font-medium animate-pulse">Triangulating location...</div>}
-                  
-                  {vets.map(vet => (
-                      <motion.div 
-                          key={vet.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="bg-white p-5 rounded-[20px] border border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all cursor-pointer group"
-                          onClick={() => setSelectedVet(vet)}
-                      >
-                          <div className="flex justify-between items-start mb-2">
-                              <h3 className="text-lg font-extrabold text-slate-800 leading-tight group-hover:text-primary transition-colors">{vet.name}</h3>
-                              <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg">
-                                  <Star size={14} className="text-amber-500 fill-amber-500" />
-                                  <span className="text-xs font-bold text-amber-700">{vet.rating}</span>
-                              </div>
-                          </div>
-                          
-                          <div className="flex items-start gap-2 text-slate-500 text-sm mb-4">
-                              <MapPin size={16} className="shrink-0 mt-0.5 text-slate-400" />
-                              <span className="line-clamp-2">{vet.address}</span>
-                          </div>
+          <div className="w-full md:w-[450px] h-full flex flex-col bg-white border-r border-slate-200 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative">
+              
+              {/* List Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200">
+                  {loadingLocation && (
+                      <div className="p-4 bg-emerald-50 text-emerald-700 rounded-xl text-center text-sm font-bold animate-pulse flex items-center justify-center gap-2">
+                          <MapPin size={16} className="animate-bounce" /> Triangulating your location...
+                      </div>
+                  )}
 
-                          <div className="flex items-center gap-2">
-                              <button 
-                                  onClick={(e) => { e.stopPropagation(); setSelectedVet(vet); }}
-                                  className="flex-1 bg-slate-900 text-white px-[16px] py-[8px] rounded-[12px] font-bold text-sm hover:bg-slate-800 transition-colors"
-                              >
-                                  View Profile
-                              </button>
-                              <a 
-                                  href={`https://www.google.com/maps/dir/?api=1&destination=${vet.lat},${vet.lng}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  target="_blank" rel="noreferrer"
-                                  className="w-10 h-10 flex items-center justify-center rounded-[12px] bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors"
-                              >
-                                  <Navigation size={18} />
-                              </a>
-                          </div>
-                      </motion.div>
-                  ))}
+                  {filteredVets.length === 0 && !loadingLocation ? (
+                      <div className="text-center py-12 text-slate-400">
+                          <p>No vets found matching your search.</p>
+                      </div>
+                  ) : (
+                      filteredVets.map((vet, index) => (
+                          <motion.div 
+                              key={vet.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              className={`p-5 rounded-[1.5rem] border transition-all cursor-pointer group relative overflow-hidden ${selectedVet?.id === vet.id ? 'bg-emerald-50 border-emerald-500 shadow-md ring-1 ring-emerald-500' : 'bg-white border-slate-100 hover:border-emerald-300 hover:shadow-lg'}`}
+                              onClick={() => setSelectedVet(vet)}
+                          >
+                              {selectedVet?.id === vet.id && (
+                                  <div className="absolute top-0 right-0 p-2 bg-emerald-500 rounded-bl-xl text-white">
+                                      <Star size={12} fill="currentColor" />
+                                  </div>
+                              )}
+
+                              <div className="flex justify-between items-start mb-3">
+                                  <div className="flex items-center gap-3">
+                                      {/* Small Avatar in List Item */}
+                                      <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                                        {vet.avatar_url ? (
+                                            <img src={vet.avatar_url} alt={vet.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Stethoscope className="w-full h-full p-2.5 text-slate-400" />
+                                        )}
+                                      </div>
+                                      <div>
+                                        <h3 className="text-lg font-black text-slate-800 leading-tight group-hover:text-emerald-600 transition-colors">{vet.name}</h3>
+                                        <div className="flex items-center gap-1 text-xs font-bold text-amber-500 mt-1">
+                                            <Star size={12} fill="currentColor" /> {vet.rating}
+                                            <span className="text-slate-300 mx-1">•</span>
+                                            <span className="text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">{vet.distance} km</span>
+                                        </div>
+                                      </div>
+                                  </div>
+                              </div>
+                              
+                              <div className="flex items-start gap-2 text-slate-500 text-sm mb-4 pl-[3.75rem]">
+                                  <MapPin size={16} className="shrink-0 mt-0.5 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                                  <span className="line-clamp-2 leading-relaxed">{vet.address}</span>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-auto pl-[3.75rem]">
+                                  <button 
+                                      onClick={(e) => { e.stopPropagation(); setSelectedVet(vet); }}
+                                      className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors ${selectedVet?.id === vet.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                  >
+                                      View Profile
+                                  </button>
+                                  <a 
+                                      href={`https://www.google.com/maps/dir/?api=1&destination=${vet.lat},${vet.lng}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      target="_blank" rel="noreferrer"
+                                      className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors border border-slate-100"
+                                      title="Get Directions"
+                                  >
+                                      <Navigation size={18} />
+                                  </a>
+                              </div>
+                          </motion.div>
+                      ))
+                  )}
               </div>
           </div>
 
           {/* MAP CONTAINER */}
-          <div className="hidden md:block flex-1 relative bg-slate-100">
+          <div className="hidden md:block flex-1 relative bg-slate-100 z-0">
               <MapContainer center={COLOMBO_CENTER} zoom={13} className="w-full h-full outline-none">
                   <TileLayer
                     attribution='&copy; OpenStreetMap contributors'
@@ -222,24 +279,31 @@ export default function FindVet() {
                   />
                   
                   {/* Auto-fit Bounds Logic */}
-                  <MapBoundsHandler userLocation={userLocation} vets={vets} />
+                  <MapBoundsHandler userLocation={userLocation} vets={filteredVets} />
 
                   {userLocation && (
                     <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
-                      <Popup className="font-sans font-bold">You are here</Popup>
+                      <Popup className="font-heading font-bold">You are here</Popup>
                     </Marker>
                   )}
 
-                  {vets.map(vet => (
+                  {filteredVets.map(vet => (
                       <Marker 
                         key={vet.id} 
                         position={[vet.lat, vet.lng]}
                         eventHandlers={{ click: () => setSelectedVet(vet) }}
                       > 
                         <Popup className="custom-popup">
-                             <div className="text-center p-2">
-                                <h3 className="font-bold text-slate-900">{vet.name}</h3>
-                                <p className="text-xs text-slate-500">{vet.distance} km away</p>
+                             <div className="text-center p-2 min-w-[150px]">
+                                <div className="w-10 h-10 rounded-full bg-slate-100 mx-auto mb-2 overflow-hidden">
+                                     {vet.avatar_url ? (
+                                        <img src={vet.avatar_url} className="w-full h-full object-cover" />
+                                     ) : (
+                                        <Stethoscope className="w-full h-full p-2 text-slate-400" />
+                                     )}
+                                </div>
+                                <h3 className="font-bold text-slate-900 mb-1">{vet.name}</h3>
+                                <div className="text-xs font-bold text-emerald-600 bg-emerald-50 inline-block px-2 py-1 rounded-full">{vet.distance} km away</div>
                              </div>
                         </Popup>
                       </Marker>
@@ -255,7 +319,7 @@ export default function FindVet() {
                   {/* Backdrop */}
                   <motion.div 
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[2000]"
+                      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[2000]"
                       onClick={() => setSelectedVet(null)}
                   />
                   
@@ -263,83 +327,95 @@ export default function FindVet() {
                   <motion.div 
                       initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                      className="fixed top-0 right-0 h-full w-full md:w-[500px] bg-white shadow-2xl z-[2001] overflow-y-auto"
+                      className="fixed top-0 right-0 h-full w-full md:w-[550px] bg-white shadow-2xl z-[2001] overflow-y-auto border-l border-white/20"
                   >
+                      {/* Close Button */}
+                      <button 
+                          onClick={() => setSelectedVet(null)}
+                          className="fixed top-6 right-6 z-50 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center text-slate-800 shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                      >
+                          <X size={20} />
+                      </button>
+
                       {/* Hero Image */}
-                      <div className="relative h-48 bg-slate-100">
+                      <div className="relative h-64 bg-slate-200">
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
                             <img 
-                                src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                                src={selectedVet.avatar_url || "https://images.unsplash.com/photo-1629909613654-28e377c37b09?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80"} 
                                 alt="Clinic" 
                                 className="w-full h-full object-cover"
                             />
-                            <button 
-                                onClick={() => setSelectedVet(null)}
-                                className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-slate-800 shadow-lg hover:scale-105 transition-transform"
-                            >
-                                <X size={20} />
-                            </button>
+                            <div className="absolute bottom-6 left-8 z-20 text-white">
+                                <h2 className="text-4xl font-black mb-2 shadow-sm leading-tight">{selectedVet.name}</h2>
+                                <div className="flex items-center gap-3 text-sm font-bold text-white/90">
+                                    <span className="bg-amber-500/20 backdrop-blur px-2 py-1 rounded-lg border border-amber-500/30 text-amber-300 flex items-center gap-1">
+                                        <Star size={14} fill="currentColor" /> {selectedVet.rating}
+                                    </span>
+                                    <span className="flex items-center gap-1"><MapPin size={14} /> {selectedVet.distance} km away</span>
+                                </div>
+                            </div>
                       </div>
 
-                      <div className="p-8">
-                          <h2 className="text-3xl font-black text-slate-800 mb-2 leading-tight">{selectedVet.name}</h2>
+                      <div className="p-8 space-y-8">
                           
-                          <div className="flex items-center gap-4 text-sm font-bold text-slate-500 mb-6">
-                              <span className="flex items-center gap-1"><Star size={14} className="text-amber-500 fill-amber-500" /> {selectedVet.rating} (120 reviews)</span>
-                              <span className="flex items-center gap-1"><MapPin size={14} /> {selectedVet.distance} km away</span>
+                          {/* Main Actions */}
+                          <div className="flex gap-3">
+                               <a 
+                                  href={`tel:${selectedVet.phone}`}
+                                  className="flex-1 bg-slate-900 text-white py-4 rounded-xl font-bold text-center hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 group"
+                              >
+                                  <Phone size={18} className="group-hover:animate-pulse" /> Call Clinic
+                              </a>
+                              <a 
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${selectedVet.lat},${selectedVet.lng}`}
+                                  target="_blank" rel="noreferrer"
+                                  className="flex-1 bg-emerald-600 text-white py-4 rounded-xl font-bold text-center hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 group"
+                              >
+                                  <Navigation size={18} className="group-hover:-translate-y-1 transition-transform" /> Directions
+                              </a>
                           </div>
 
-                          <div className="space-y-8">
-                              {/* About */}
-                              <section>
-                                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">About Clinic</h3>
-                                  <p className="text-slate-600 leading-relaxed">
-                                      {selectedVet.description}
-                                  </p>
-                              </section>
+                          {/* About */}
+                          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">About Clinic</h3>
+                              <p className="text-slate-600 leading-relaxed font-medium">
+                                  {selectedVet.description}
+                              </p>
+                          </div>
 
-                              {/* Services */}
-                              <section>
-                                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                      <Stethoscope size={14} /> Services
-                                  </h3>
-                                  <div className="flex flex-wrap gap-2">
-                                      {(selectedVet.services || []).map(service => (
-                                          <span key={service} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-bold border border-slate-200">
-                                              {service}
-                                          </span>
-                                      ))}
+                          {/* Services */}
+                          <div>
+                              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                  <Stethoscope size={16} /> Available Services
+                              </h3>
+                              <div className="flex flex-wrap gap-2">
+                                  {(selectedVet.services || []).map(service => (
+                                      <span key={service} className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold border border-emerald-100 shadow-sm">
+                                          {service}
+                                      </span>
+                                  ))}
+                              </div>
+                          </div>
+
+                          {/* Info Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-start gap-4">
+                                  <div className="p-3 bg-amber-50 rounded-xl text-amber-500">
+                                      <Clock size={20} />
                                   </div>
-                              </section>
-
-                              {/* Info Grid */}
-                              <section className="grid grid-cols-2 gap-4">
-                                  <div className="p-4 bg-slate-50 rounded-[16px] border border-slate-100">
-                                      <Clock size={20} className="text-rose-500 mb-2" />
+                                  <div>
                                       <p className="font-bold text-slate-800 text-sm">Opening Hours</p>
-                                      <p className="text-xs text-slate-500 mt-1">{selectedVet.hours}</p>
+                                      <p className="text-xs text-slate-500 mt-1 font-medium">{selectedVet.hours}</p>
                                   </div>
-                                  <div className="p-4 bg-slate-50 rounded-[16px] border border-slate-100">
-                                      <Phone size={20} className="text-emerald-500 mb-2" />
-                                      <p className="font-bold text-slate-800 text-sm">Contact</p>
-                                      <p className="text-xs text-slate-500 mt-1">{selectedVet.phone}</p>
+                              </div>
+                              <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-start gap-4">
+                                  <div className="p-3 bg-indigo-50 rounded-xl text-indigo-500">
+                                      <Mail size={20} />
                                   </div>
-                              </section>
-
-                              {/* Action Buttons */}
-                              <div className="flex flex-col gap-3 pt-4">
-                                  <a 
-                                      href={`tel:${selectedVet.phone}`}
-                                      className="w-full bg-slate-900 text-white px-[16px] py-[12px] rounded-[12px] font-bold text-center hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
-                                  >
-                                      <Phone size={18} /> Call Now
-                                  </a>
-                                  <a 
-                                      href={`https://www.google.com/maps/dir/?api=1&destination=${selectedVet.lat},${selectedVet.lng}`}
-                                      target="_blank" rel="noreferrer"
-                                      className="w-full bg-white text-slate-700 border border-slate-200 px-[16px] py-[12px] rounded-[12px] font-bold text-center hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-                                  >
-                                      <Navigation size={18} /> Get Directions
-                                  </a>
+                                  <div>
+                                      <p className="font-bold text-slate-800 text-sm">Contact Email</p>
+                                      <p className="text-xs text-slate-500 mt-1 font-medium">{selectedVet.email}</p>
+                                  </div>
                               </div>
                           </div>
                       </div>

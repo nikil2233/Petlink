@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, MapPin, ArrowRight, Building, Stethoscope, HeartHandshake, Image as ImageIcon, Check, AlertTriangle, ArrowLeft, Target, PawPrint } from 'lucide-react';
+import InteractiveDog from '../components/InteractiveDog';
+
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -11,6 +13,7 @@ export default function Auth() {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const navigate = useNavigate();
+  const [focusedField, setFocusedField] = useState(null); // 'email' | 'password'
 
   // Role Selection
   const [role, setRole] = useState('user'); 
@@ -224,6 +227,17 @@ export default function Auth() {
                 </div>
             )}
 
+
+
+            {/* DOG ANIMATION */}
+            <div className="flex justify-center w-full mb-4">
+                <InteractiveDog 
+                    isEmailFocused={focusedField === 'email'}
+                    emailLength={email.length}
+                    isPasswordFocused={focusedField === 'password'}
+                />
+            </div>
+
             <div className="form-fields">
                 <div className="input-with-icon">
                   <Mail className="icon" size={20} />
@@ -234,6 +248,8 @@ export default function Auth() {
                     placeholder="Email Address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => setFocusedField(null)}
                   />
                 </div>
 
@@ -246,6 +262,8 @@ export default function Auth() {
                      placeholder="Password"
                      value={password}
                      onChange={(e) => setPassword(e.target.value)}
+                     onFocus={() => setFocusedField('password')}
+                     onBlur={() => setFocusedField(null)}
                    />
                 </div>
                 {isLogin && (
