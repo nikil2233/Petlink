@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
     MapPin, Camera, AlertTriangle, Send, X, Search, Phone, 
     Calendar, Clock, PawPrint, CheckCircle, FileText, Download, 
-    Share2, Eye, Shield, Lock, Unlock, Truck, Heart, Bell 
+    Share2, Eye, Shield, Lock, Unlock, Truck, Heart, Bell, ChevronLeft, ChevronRight 
 } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 import { useAuth } from '../context/AuthContext';
@@ -72,39 +72,54 @@ export default function LostAndFound() {
   }, [activeTab]);
 
   // Handle Deep Linking from Notifications
-  useEffect(() => {
-    const fetchLinkedPet = async (id) => {
-        try {
-            const { data, error } = await supabase
-                .from('lost_pets')
-                .select('*')
-                .eq('id', id)
-                .single();
-            if (data) {
-                setSelectedPet(data);
-                // Switch to alerts tab so modal is visible over the grid
-                setActiveTab('alerts'); 
+    // Handle Deep Linking from Notifications
+    useEffect(() => {
+        const fetchLinkedPet = async (id) => {
+            try {
+                const { data, error } = await supabase
+                    .from('lost_pets')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+                if (data) {
+                    setSelectedPet(data);
+                    setActiveTab('alerts'); 
+                    // Fetch sightings if owner
+                    if (session?.user?.id === data.owner_id) {
+                        fetchSightings(data.id);
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching linked pet:", err);
             }
-        } catch (err) {
-            console.error("Error fetching linked pet:", err);
-        }
-    };
+        };
 
-    const params = new URLSearchParams(location.search);
-    const openId = params.get('open_id');
-    
-    if (openId) {
-        // First check if we already have it in the list
-        const existingPet = lostPets.find(p => p.id === openId);
-        if (existingPet) {
-            setSelectedPet(existingPet);
-            setActiveTab('alerts');
-        } else {
-            // If not found (e.g. freshly loaded, or not in current fetch), fetch specifically
-            fetchLinkedPet(openId);
+        const params = new URLSearchParams(location.search);
+        const openId = params.get('open_id');
+        const viewSightings = params.get('view_sightings');
+        
+        if (openId) {
+            const existingPet = lostPets.find(p => p.id === openId);
+            if (existingPet) {
+                setSelectedPet(existingPet);
+                setActiveTab('alerts');
+                if (session?.user?.id === existingPet.owner_id) {
+                    fetchSightings(existingPet.id);
+                }
+            } else {
+                fetchLinkedPet(openId);
+            }
+            
+            // Optional: Scroll to sightings if requested
+            if (viewSightings) {
+                // We might need a small timeout to let the modal render
+                setTimeout(() => {
+                    const sightingsSection = document.getElementById('sightings-section');
+                    if (sightingsSection) sightingsSection.scrollIntoView({ behavior: 'smooth' });
+                }, 1000);
+            }
         }
-    }
-  }, [location.search, lostPets]); // Depend on location changes too
+    }, [location.search, lostPets, session]);
 
   const fetchRescuers = async () => {
       try {
@@ -354,8 +369,17 @@ export default function LostAndFound() {
       }
   };
 
+  const [currentImageIndex, setCurrentImageIndex] = useState(0); // For Image Slider
+
   const openPetDetail = (pet) => {
       setSelectedPet(pet);
+      setCurrentImageIndex(0); // Reset slider
+      // If user is owner, fetch sightings
+      if (session?.user?.id === pet.owner_id) {
+          fetchSightings(pet.id);
+      } else {
+          setSightings([]);
+      }
   };
 
   const handleMarkReunitedFromModal = async (petId) => {
@@ -473,6 +497,121 @@ export default function LostAndFound() {
   const [claimProof, setClaimProof] = useState('');
   const [claimImage, setClaimImage] = useState(null);
   const claimFileRef = useRef(null);
+
+  // --- SIGHTINGS (OWNER VIEW) ---
+  const [sightings, setSightings] = useState([]);
+  
+  const fetchSightings = async (petId) => {
+      // Join with profiles to get reporter name/avatar if they are a user
+      const { data, error } = await supabase
+        .from('sighting_reports')
+        .select('*, reporter:reporter_id(full_name, avatar_url, id)') 
+        .eq('lost_pet_id', petId)
+        .order('created_at', { ascending: false });
+      
+      if (error) console.error("Error fetching sightings:", error);
+      else setSightings(data || []);
+  };
+
+  // --- REPORT SIGHTING STATE ---
+  const [showSightingModal, setShowSightingModal] = useState(false);
+  const [sightingDate, setSightingDate] = useState('');
+  const [sightingTime, setSightingTime] = useState('');
+  const [sightingLocation, setSightingLocation] = useState('');
+  const [sightingDescription, setSightingDescription] = useState('');
+  const [sightingImage, setSightingImage] = useState(null);
+  const [sightingCoords, setSightingCoords] = useState(null);
+  const [reporterPhone, setReporterPhone] = useState('');
+  const sightingFileRef = useRef(null);
+
+  const openSightingModal = () => {
+      setSightingDate(new Date().toISOString().split('T')[0]);
+      setSightingTime(new Date().toTimeString().slice(0, 5));
+      setSightingLocation('');
+      setSightingDescription('');
+      setReporterPhone('');
+      setSightingImage(null);
+      setSightingCoords(null);
+      setShowSightingModal(true);
+  };
+
+  const handleSightingSubmit = async (e) => {
+      e.preventDefault();
+      if (!selectedPet) return;
+      
+      setLoading(true);
+      try {
+          // 1. Upload Image if exists
+          let imageUrl = null;
+          if (sightingImage) {
+              const fileExt = sightingImage.name.split('.').pop();
+              const fileName = `sighting_${Date.now()}.${fileExt}`;
+              const { error: uploadError } = await supabase.storage
+                  .from('lost-pets')
+                  .upload(fileName, sightingImage);
+              
+              if (uploadError) throw uploadError;
+
+              const { data: publicUrlData } = supabase.storage
+                  .from('lost-pets')
+                  .getPublicUrl(fileName);
+              imageUrl = publicUrlData.publicUrl;
+          }
+
+          // 2. Insert Sighting Report
+          const reportPayload = {
+              lost_pet_id: selectedPet.id,
+              reporter_id: session?.user?.id || null, 
+              sighting_date: sightingDate,
+              sighting_time: sightingTime,
+              sighting_location: sightingLocation,
+              latitude: sightingCoords?.lat || null,
+              longitude: sightingCoords?.lng || null,
+              description: sightingDescription,
+              image_url: imageUrl,
+              reporter_phone: reporterPhone
+          };
+
+          const { error: insertError } = await supabase
+              .from('sighting_reports')
+              .insert(reportPayload);
+
+          if (insertError) throw insertError;
+
+          // 3. Update Pet Status to 'sighted'
+          const { error: updateError } = await supabase
+            .rpc('mark_pet_sighted', { row_id: selectedPet.id });
+          
+          if (updateError) console.error("Error updating status:", updateError);
+
+          // 4. Notify Owner
+          const { error: notifError } = await supabase
+              .from('notifications')
+              .insert({
+                  user_id: selectedPet.owner_id,
+                  title: 'Target Sighted! 🐾',
+                  message: `Someone saw ${selectedPet.pet_name} at ${sightingLocation}. They also provided contact info.`,
+                  type: 'alert', // Ensure this style handles high priority
+                  link: `/lost-and-found?open_id=${selectedPet.id}&view_sightings=true`
+              });
+
+          if (notifError) console.error("Notif error:", notifError);
+
+          setShowSightingModal(false);
+          setMsg({ type: 'success', text: 'Sighting reported! Status updated to Sighted.' });
+          setTimeout(() => setMsg(null), 5000);
+          
+          // Refresh lists
+          fetchLostPets();
+          if (selectedPet) setSelectedPet(prev => ({ ...prev, status: 'sighted' }));
+
+      } catch (err) {
+          console.error("Error reporting sighting:", err);
+          setMsg({ type: 'error', text: 'Failed to report sighting. Please try again.' });
+      } finally {
+          setLoading(false);
+      }
+  };
 
   const openClaimModal = (pet) => {
       setPetToClaim(pet);
@@ -638,15 +777,73 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                 
                 <div className="flex flex-col md:flex-row h-full">
                     {/* Left: Images */}
-                    <div className="md:w-1/2 bg-slate-100 relative min-h-[300px] md:min-h-full">
-                        <img 
-                            src={selectedPet.image_url} 
-                            alt={selectedPet.pet_name} 
-                            className="w-full h-full object-cover"
-                        />
+                    {/* Left: Images Slider */}
+                    <div className="md:w-1/2 bg-slate-900 relative min-h-[300px] md:min-h-full group">
+                        {(() => {
+                            // Prepare images list
+                            // If additional_images exists and has items, use it. Otherwise fallback to single image_url
+                            const sliderImages = (selectedPet.additional_images && selectedPet.additional_images.length > 0) 
+                                ? selectedPet.additional_images 
+                                : [selectedPet.image_url];
+                                
+                            // Determine current image to show (using a simple local var won't work for re-renders, needs state)
+                            // Since we can't easily add state inside this conditional block without extracting a component,
+                            // AND 'selectedPet' changes, we might want to use a state in the main component.
+                            // However, a simple solution for now is to use a controlled index, OR extract a small component.
+                            // Let's use a small inline customized component approach defined outside or standard state.
+                            // ACTUALLY, sticking state in the main component is safest.
+                            // See 'currentImageIndex' added below.
+                            
+                            const currentImg = sliderImages[currentImageIndex] || sliderImages[0];
+                            
+                            return (
+                                <>
+                                    <img 
+                                        src={currentImg} 
+                                        alt={selectedPet.pet_name} 
+                                        className="w-full h-full object-cover transition-opacity duration-300"
+                                    />
+                                    
+                                    {/* Navigation Arrows */}
+                                    {sliderImages.length > 1 && (
+                                        <>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCurrentImageIndex(prev => (prev === 0 ? sliderImages.length - 1 : prev - 1));
+                                                }}
+                                                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+                                            >
+                                                <ChevronLeft size={24} />
+                                            </button>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCurrentImageIndex(prev => (prev === sliderImages.length - 1 ? 0 : prev + 1));
+                                                }}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+                                            >
+                                                <ChevronRight size={24} />
+                                            </button>
+                                            
+                                            {/* Dots */}
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                                                {sliderImages.map((_, idx) => (
+                                                    <div 
+                                                        key={idx}
+                                                        className={`w-2 h-2 rounded-full transition-all shadow-sm ${idx === currentImageIndex ? 'bg-white w-4' : 'bg-white/50'}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </>
+                            );
+                        })()}
+                        
                          <div className="absolute top-4 left-4 flex gap-2">
-                            <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-lg ${selectedPet.report_type === 'lost' ? 'bg-red-600 text-white' : 'bg-green-500 text-white'}`}>
-                                {selectedPet.report_type}
+                            <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-lg ${selectedPet.report_type === 'lost' ? 'bg-red-600 text-white' : selectedPet.status === 'sighted' ? 'bg-orange-500 text-white animate-pulse' : 'bg-green-500 text-white'}`}>
+                                {selectedPet.status === 'lost' ? 'LOST' : selectedPet.status === 'sighted' ? 'SIGHTED' : 'FOUND'}
                             </span>
                         </div>
                     </div>
@@ -786,6 +983,17 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                     </button>
                                 )}
 
+                                {/* REPORT SIGHTING BUTTON (For non-owners on LOST pets) */}
+                                {selectedPet.status === 'lost' && user && user.id !== selectedPet.owner_id && (
+                                    <button 
+                                        onClick={openSightingModal}
+                                        className="w-full mt-3 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold shadow-lg shadow-orange-200 hover:shadow-xl transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Eye size={20} className="text-white" />
+                                        I Saw This Pet
+                                    </button>
+                                )}
+
                                 {/* OWNER ACTIONS */}
                                 {session?.user?.id === selectedPet.owner_id && (
                                     <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
@@ -796,6 +1004,59 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                         >
                                             <CheckCircle size={20} /> Mark as Reunited
                                         </button>
+                                    </div>
+                                )}
+
+                                {/* OWNER VIEW: SIGHTINGS */}
+                                {session?.user?.id === selectedPet.owner_id && sightings.length > 0 && (
+                                    <div id="sightings-section" className="mt-6 pt-6 border-t border-slate-200">
+                                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide mb-4 flex items-center gap-2">
+                                            <Eye size={16} className="text-orange-500" /> 
+                                            Reported Sightings ({sightings.length})
+                                        </h4>
+                                        <div className="space-y-4">
+                                            {sightings.map(sighting => (
+                                                <div key={sighting.id} className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border border-orange-100 dark:border-orange-900/30">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="font-bold text-slate-800 dark:text-white text-sm">{sighting.sighting_location}</span>
+                                                                {sighting.reporter_phone && (
+                                                                    <a href={`tel:${sighting.reporter_phone}`} className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 hover:bg-orange-200">
+                                                                        <Phone size={10} /> {sighting.reporter_phone}
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-slate-500">
+                                                                {new Date(sighting.sighting_date).toLocaleDateString()} at {sighting.sighting_time} 
+                                                                {sighting.reporter && (
+                                                                    <span className="ml-1">by 
+                                                                        <button 
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                navigate(`/profile/${sighting.reporter.id}`);
+                                                                            }}
+                                                                            className="font-bold ml-1 hover:underline hover:text-orange-600 transition-colors"
+                                                                        >
+                                                                            {sighting.reporter.full_name || 'User'}
+                                                                        </button>
+                                                                    </span>
+                                                                )}
+                                                            </p>
+                                                        </div>
+                                                        {sighting.image_url && (
+                                                            <a href={sighting.image_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-orange-600 hover:underline">View Photo</a>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm text-slate-600 dark:text-slate-300 italic">"{sighting.description}"</p>
+                                                    {sighting.image_url && (
+                                                        <div className="mt-2 h-24 w-full rounded-lg overflow-hidden relative">
+                                                            <img src={sighting.image_url} className="w-full h-full object-cover" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
 
@@ -949,6 +1210,12 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                 >
                     <FileText size={18} /> File a Report
                 </button>
+                <button 
+                    onClick={() => setActiveTab('reunited')}
+                    className={`px-8 py-3 rounded-full font-bold transition-all text-sm flex items-center gap-2 ${activeTab === 'reunited' ? 'bg-green-500 text-white shadow-lg shadow-green-200 dark:shadow-green-900/20' : 'text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'}`}
+                >
+                    <Heart size={18} /> Reunited
+                </button>
             </div>
         </div>
 
@@ -977,8 +1244,8 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                 </div>
                             )}
                             <div className="absolute top-4 left-4 flex flex-col gap-2">
-                                <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-lg w-fit ${pet.status === 'lost' ? 'bg-red-600 text-white' : 'bg-green-500 text-white'}`}>
-                                    {pet.status === 'lost' ? 'LOST' : 'FOUND'}
+                                <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-lg w-fit ${pet.status === 'lost' ? 'bg-red-600 text-white' : pet.status === 'sighted' ? 'bg-orange-500 text-white animate-pulse' : 'bg-green-500 text-white'}`}>
+                                    {pet.status === 'lost' ? 'LOST' : pet.status === 'sighted' ? 'SIGHTED' : 'FOUND'}
                                 </span>
                                 
                                 {pet.custody_status === 'rescuer_notified' && (
@@ -1476,6 +1743,121 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                             Submit Claim <Send size={16} />
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* SIGHTING REPORT MODAL */}
+      {showSightingModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowSightingModal(false)} />
+            <div className="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border dark:border-slate-700 max-h-[90vh] flex flex-col">
+                <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6 text-center shrink-0">
+                    <h3 className="text-xl font-black text-white mb-1">Report a Sighting</h3>
+                    <p className="text-orange-50 text-xs">Help bring {selectedPet?.pet_name} home!</p>
+                </div>
+                
+                <div className="p-6 overflow-y-auto custom-scrollbar">
+                    <form onSubmit={handleSightingSubmit} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Date</label>
+                                <input 
+                                    type="date"
+                                    required
+                                    className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                                    value={sightingDate}
+                                    onChange={e => setSightingDate(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Time</label>
+                                <input 
+                                    type="time"
+                                    required
+                                    className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                                    value={sightingTime}
+                                    onChange={e => setSightingTime(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Your Phone Number</label>
+                            <input 
+                                type="tel"
+                                required
+                                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                                placeholder="Enter your contact number"
+                                value={reporterPhone}
+                                onChange={e => setReporterPhone(e.target.value)}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Location Details</label>
+                            <input 
+                                required
+                                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                                placeholder="Street name, landmark, etc."
+                                value={sightingLocation}
+                                onChange={e => setSightingLocation(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Basic Location Picker Reuse if possible, else simplified */}
+                        {/* We'll stick to text for MVP unless user specifically asked for map here, 
+                            but map picker usage in modal might be cramped. keeping it simple for now. */}
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Description</label>
+                            <textarea 
+                                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500 h-24 resize-none"
+                                placeholder="Was the pet moving? Injured? Friendly?"
+                                value={sightingDescription}
+                                onChange={e => setSightingDescription(e.target.value)}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Photo (Highly Recommended)</label>
+                            <div 
+                                onClick={() => sightingFileRef.current.click()}
+                                className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-50 dark:hover:bg-slate-700 hover:border-orange-300 transition-colors"
+                            >
+                                {sightingImage ? (
+                                    <div className="text-center relative w-full">
+                                         <span className="text-sm font-bold text-orange-600 truncate max-w-[200px] block mx-auto underline">{sightingImage.name}</span>
+                                         <button type="button" onClick={(e) => { e.stopPropagation(); setSightingImage(null); }} className="text-xs text-red-500 mt-1">Remove</button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Camera className="text-slate-400 mb-2" />
+                                        <span className="text-xs font-bold text-slate-400">Click to Upload Photo</span>
+                                    </>
+                                )}
+                            </div>
+                            <input ref={sightingFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => setSightingImage(e.target.files[0])} />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                            <button 
+                                type="button"
+                                onClick={() => setShowSightingModal(false)}
+                                className="py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit"
+                                disabled={loading}
+                                className="py-3 rounded-xl bg-orange-500 text-white font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                {loading ? 'Sending...' : 'Report Sighting'} <Send size={16} />
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

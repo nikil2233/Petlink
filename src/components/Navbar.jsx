@@ -45,8 +45,12 @@ export default function Navbar() {
   };
 
   const markAsRead = async (id) => {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+      if (error) {
+          console.error("Error marking notification as read:", error);
+      } else {
+          setNotifications(prev => prev.filter(n => n.id !== id));
+      }
   };
 
   const handleLogout = async () => {

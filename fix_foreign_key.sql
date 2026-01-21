@@ -1,0 +1,1 @@
+Error: Failed to run sql query: ERROR: 42710: constraint "sighting_reports_reporter_id_fkey" for relation "sighting_reports" already exists

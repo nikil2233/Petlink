@@ -298,6 +298,18 @@ export default function VetAppointments() {
                                                 Decline
                                             </button>
                                         </div>
+                                    ) : app.status === 'confirmed' ? (
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleAction(app.id, 'completed'); }}
+                                                className="px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-sm font-bold rounded-lg shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-1.5"
+                                            >
+                                                <Check size={16} /> Mark Done
+                                            </button>
+                                            <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
+                                                <ChevronRight size={20} />
+                                            </div>
+                                        </div>
                                     ) : (
                                         <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
                                             <ChevronRight size={20} />

@@ -104,13 +104,18 @@ export default function Notifications() {
       }
 
       // Navigation Logic
+      if (notification.link) {
+          navigate(notification.link);
+          return;
+      }
+
       switch (notification.type) {
         case 'status_change':
           navigate('/my-bookings');
           break;
         case 'alert':
         case 'emergency':
-          navigate('/lost-feed');
+          navigate('/lost-and-found');
           break;
         case 'success':
           navigate('/success-stories');
