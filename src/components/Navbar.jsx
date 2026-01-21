@@ -66,8 +66,8 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="fixed top-4 left-0 right-0 z-50 px-4">
-      <div className="max-w-7xl mx-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-white/50 dark:border-slate-700/50 px-6 py-3 flex justify-between items-center transition-all duration-300">
+    <nav className="sticky top-0 z-50 w-full">
+      <div className="w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex justify-between items-center transition-all duration-300">
         
         {/* LOGO */}
         <Link to="/" className="flex items-center gap-2 group">

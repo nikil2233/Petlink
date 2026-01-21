@@ -88,7 +88,7 @@ export default function UserProfile() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 pt-24 pb-12 px-4 transition-colors duration-300">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 pt-8 pb-12 px-4 transition-colors duration-300">
       <div className="container mx-auto max-w-4xl">
         
         <button 

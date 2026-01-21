@@ -748,24 +748,7 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
   return (
     <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 pt-24 pb-12 px-4 relative transition-colors duration-300">
       
-      {/* HEADER TABS - FIXED */}
-       <div className="max-w-6xl mx-auto mb-8">
-            <div className="flex p-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 w-fit mx-auto md:mx-0">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
-                            activeTab === tab.id 
-                            ? 'bg-slate-900 text-white shadow-md dark:bg-slate-700' 
-                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
-                        }`}
-                    >
-                        {tab.icon} {tab.label}
-                    </button>
-                ))}
-            </div>
-       </div>
+      {/* Removed Duplicate Header Tabs */}
       
       {/* PET DETAIL MODAL */}
       {selectedPet && (

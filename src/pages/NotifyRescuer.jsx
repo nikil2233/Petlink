@@ -262,7 +262,7 @@ export default function NotifyRescuer() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-slate-950 pt-24 pb-12 px-4 md:px-8 font-sans">
+    <div className="min-h-screen relative overflow-hidden bg-slate-950 pt-12 pb-12 px-4 md:px-8 font-sans">
       
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-[80vh] h-[80vh] bg-orange-500/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>

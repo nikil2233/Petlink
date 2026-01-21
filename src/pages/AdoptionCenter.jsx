@@ -128,14 +128,14 @@ export default function AdoptionCenter() {
   });
 
   return (
-    <div className="page-container bg-slate-50 dark:bg-slate-900 transition-colors duration-300" style={{ minHeight: '100vh', paddingTop: '7rem' }}>
+    <div className="page-container bg-slate-50 dark:bg-slate-900 transition-colors duration-300" style={{ minHeight: '100vh', paddingTop: '2rem' }}>
       <div className="container mx-auto px-4">
         
         {/* Top Header - Hero Card */}
         <div className="relative w-full rounded-[40px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 flex items-center transition-colors duration-300" style={{ minHeight: '450px' }}>
             
-            {/* Background Image - Absolute Right */}
-            <div className="absolute right-0 top-0 h-full w-[60%] pointer-events-none">
+            {/* Background Image - Desktop (Absolute Right) */}
+            <div className="hidden md:block absolute right-0 top-0 h-full w-[60%] pointer-events-none">
                 <img 
                     src="https://images.unsplash.com/photo-1623387641168-d9803ddd3f35?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80" 
                     alt="Golden Retriever Puppy and Ginger Kitten" 
@@ -147,21 +147,30 @@ export default function AdoptionCenter() {
             {/* Content Container - Grid System to prevent overlap */}
             <div className="container mx-auto px-6 lg:px-12 relative z-10 w-full h-full flex flex-col md:flex-row items-center">
                 
+                {/* Mobile Image (Visible only on mobile) */}
+                <div className="md:hidden w-full h-64 mb-6 relative rounded-3xl overflow-hidden shadow-inner mt-6">
+                     <img 
+                         src="https://images.unsplash.com/photo-1623387641168-d9803ddd3f35?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                         alt="Funny Pets" 
+                         className="w-full h-full object-cover"
+                     />
+                </div>
+
                 {/* Left Text Column */}
-                <div className="w-full md:w-1/2 pt-10 md:pt-0">
+                <div className="w-full md:w-1/2 md:pt-0 pb-10 md:pb-0">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100/80 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold mb-6 border border-orange-200 dark:border-orange-900/50">
                         <PawPrint size={12} /> #1 Pet Adoption Platform
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-[900] text-[#1a202c] dark:text-white leading-[1.1] tracking-tight mb-6">
+                    <h1 className="text-4xl md:text-7xl font-[900] text-[#1a202c] dark:text-white leading-[1.1] tracking-tight mb-6">
                         Find Your New <br/>
                         Best Friend
                     </h1>
                     <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 font-medium max-w-md leading-relaxed mb-8">
-                        Every pet deserves a second chance. <br/> Open your heart and home today.
+                        Every pet deserves a second chance. <br className="hidden md:block" /> Open your heart and home today.
                     </p>
                     <button 
                         onClick={handleListPet}
-                        className="bg-slate-900 dark:bg-indigo-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center gap-3 group">
+                        className="bg-slate-900 dark:bg-indigo-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center gap-3 group w-full md:w-auto justify-center">
                         Get Started 
                         <div className="bg-white/20 rounded-full p-1 group-hover:bg-white/30 transition-colors">
                             <Plus size={18}/>

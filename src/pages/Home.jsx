@@ -10,7 +10,7 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans pb-20 overflow-x-hidden transition-colors duration-300">
       
       {/* HERO SECTION */}
-      <section className="relative pt-32 pb-20 px-6">
+      <section className="relative pt-12 pb-20 px-6">
         <div className="max-w-6xl mx-auto">
             <div className="grid md:grid-cols-2 gap-12 items-center">
                 {/* Text Content */}
