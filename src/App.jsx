@@ -22,6 +22,8 @@ import ResetPassword from './pages/ResetPassword';
 
 import SuccessStories from './pages/SuccessStories';
 
+import UserProfile from './pages/UserProfile';
+
 function App() {
   return (
     <Router>
@@ -35,6 +37,7 @@ function App() {
         <Route path="/rescuer-feed" element={<RescuerFeed />} />
         <Route path="/adopt" element={<AdoptionCenter />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:id" element={<UserProfile />} />
         <Route path="/book-appointment" element={<BookAppointment />} />
         <Route path="/find-vet" element={<FindVet />} />
         <Route path="/my-bookings" element={<MyBookings />} />

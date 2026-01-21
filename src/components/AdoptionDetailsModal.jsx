@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { X, Heart, MapPin, Shield, Info, CheckCircle, AlertCircle, ChevronLeft } from 'lucide-react';
 
@@ -17,7 +17,45 @@ export default function AdoptionDetailsModal({ animal, isOpen, onClose, session 
     message: ''
   });
 
-  if (!isOpen || !animal) return null;
+  // Check status function defined early to be used in effect
+  const checkApplicationStatus = async () => {
+    if (!animal || !session) return;
+    console.log("Checking status for:", { animalId: animal.id, userId: session.user.id });
+    try {
+        const { data, error } = await supabase
+            .from('adoption_requests')
+            .select('id, status')
+            .eq('adoption_id', animal.id)
+            .eq('requester_id', session.user.id)
+            .maybeSingle(); // Returns null if not found, instead of error
+        
+        console.log("Status Check Result:", { data, error });
+
+        if (error) {
+            console.error("Error checking status:", error);
+            return;
+        }
+
+        if (data) {
+            console.log("Found existing application!", data);
+            setAppSuccess(true);
+        }
+    } catch (e) {
+        console.error("Exception checking status:", e);
+    }
+  };
+
+  // Check if already applied - Hook must be top level
+  useEffect(() => {
+    if (session && animal && isOpen) {
+        // Reset state on open/change
+        setAppSuccess(false);
+        setAppLoading(false);
+        setView('details'); // Always start on details view
+        
+        checkApplicationStatus();
+    }
+  }, [session, animal, isOpen]);
 
   const handleAppChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -44,16 +82,21 @@ export default function AdoptionDetailsModal({ animal, isOpen, onClose, session 
                 status: 'pending',
                 ...appData
             }]);
-        
+            
         if (error) throw error;
+        
+        // Notification is now handled by the Database Trigger (more reliable)
+        console.log("Application submitted successfully");
         setAppSuccess(true);
     } catch (err) {
-        console.error(err);
+        console.error("Submission Error:", err);
         alert("Failed to submit application: " + err.message);
     } finally {
         setAppLoading(false);
     }
   };
+
+  if (!isOpen || !animal) return null;
 
   return (
     <div className="modal-overlay">
@@ -143,12 +186,13 @@ export default function AdoptionDetailsModal({ animal, isOpen, onClose, session 
                             <h4 className="m-0 mb-2 text-lg">Interested in {animal.name}?</h4>
                             <p className="text-sm text-muted mb-4">Submit an application to start the adoption process.</p>
                             
-                            <button 
-                                onClick={() => setView('apply')}
-                                className="btn btn-primary w-full justify-center" 
-                            >
-                                Apply to Adopt
-                            </button>
+                                <button 
+                                    onClick={() => setView('apply')}
+                                    className={`btn btn-primary w-full justify-center ${appSuccess ? 'opacity-50 cursor-not-allowed bg-green-600 border-green-600' : ''}`}
+                                    disabled={appSuccess}
+                                >
+                                    {appSuccess ? 'Application Submitted' : 'Apply to Adopt'}
+                                </button>
                             
                             <div className="text-center mt-4 text-xs text-muted">
                                 Posted by: {animal.posted_by === session?.user?.id ? 'You' : 'Owner/Shelter'}

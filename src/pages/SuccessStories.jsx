@@ -13,7 +13,7 @@ export default function SuccessStories() {
   // Comments State
   const [activeStoryId, setActiveStoryId] = useState(null); // Which story's comments are open
   const [comments, setComments] = useState({}); // { storyId: [comment1, comment2] }
-  const [newComment, setNewComment] = useState('');
+  const [commentInputs, setCommentInputs] = useState({}); // { storyId: "draft text" }
   const [loadingComments, setLoadingComments] = useState(false);
 
   // Likes State
@@ -27,7 +27,7 @@ export default function SuccessStories() {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
-  const canPost = ['rescuer', 'shelter'].includes(role);
+  const canPost = ['rescuer', 'shelter', 'vet'].includes(role);
 
   useEffect(() => {
     fetchStories();
@@ -110,7 +110,8 @@ export default function SuccessStories() {
   };
 
   const postComment = async (storyId) => {
-      if (!newComment.trim()) return;
+      const content = commentInputs[storyId] || '';
+      if (!content.trim()) return;
       if (!user) {
           alert("Please login to comment.");
           return;
@@ -122,7 +123,7 @@ export default function SuccessStories() {
             .insert([{
                 story_id: storyId,
                 user_id: user.id,
-                content: newComment
+                content: content
             }])
             .select(`*, user:user_id(full_name, avatar_url)`)
             .single();
@@ -133,7 +134,7 @@ export default function SuccessStories() {
               ...prev,
               [storyId]: [...(prev[storyId] || []), data]
           }));
-          setNewComment('');
+          setCommentInputs(prev => ({ ...prev, [storyId]: '' }));
       } catch (err) {
           console.error("Error posting comment:", err);
       }
@@ -185,6 +186,13 @@ export default function SuccessStories() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Security Check: Only NGOs can post
+    if (!['rescuer', 'shelter', 'vet'].includes(role)) {
+        alert("Only authorized NGOs (Rescuers, Shelters, Vets) can post success stories.");
+        return;
+    }
+
     setSubmitting(true);
     try {
         let imageUrl = null;
@@ -264,7 +272,7 @@ export default function SuccessStories() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-20">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-900 pb-20 transition-colors duration-300">
       
       {/* Hero Header */}
       <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-16 px-4 relative overflow-hidden">
@@ -290,16 +298,16 @@ export default function SuccessStories() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 onClick={() => setShowCreateModal(true)}
-                className="w-full bg-white rounded-2xl p-4 shadow-lg border border-emerald-100 flex items-center gap-4 hover:shadow-xl transition-all cursor-pointer group mb-8"
+                className="w-full bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-lg border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-4 hover:shadow-xl transition-all cursor-pointer group mb-8"
               >
-                  <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
                       <PenTool size={20} />
                   </div>
                   <div className="text-left flex-1">
-                      <h3 className="font-bold text-gray-800">Share a Success Story</h3>
-                      <p className="text-sm text-gray-500">Inspire others with your improved rescues.</p>
+                      <h3 className="font-bold text-gray-800 dark:text-white">Share a Success Story</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Inspire others with your improved rescues.</p>
                   </div>
-                  <div className="bg-emerald-600 text-white px-4 py-2 rounded-full font-bold text-sm">Post Now</div>
+                  <div className="bg-emerald-600 hover:bg-emerald-700 dark:hover:bg-emerald-500 text-white px-4 py-2 rounded-full font-bold text-sm transition-colors">Post Now</div>
               </motion.button>
           )}
 
@@ -310,53 +318,53 @@ export default function SuccessStories() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden mb-8"
+                    className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden mb-8"
                 >
                     <div className="p-6 md:p-8">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-slate-800">New Success Story</h2>
-                            <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
+                            <h2 className="text-2xl font-bold text-slate-800 dark:text-white">New Success Story</h2>
+                            <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 dark:text-slate-500">
                                 <X size={24} />
                             </button>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Title</label>
+                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Title</label>
                                 <input 
                                     type="text" 
                                     value={newTitle}
                                     onChange={e => setNewTitle(e.target.value)}
                                     placeholder="e.g. Bella's Journey to Recovery"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-bold focus:ring-2 focus:ring-emerald-500 outline-none text-lg"
+                                    className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-800 dark:text-white font-bold focus:ring-2 focus:ring-emerald-500 outline-none text-lg placeholder-slate-400 dark:placeholder-slate-500"
                                     required
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">The Story</label>
+                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">The Story</label>
                                 <textarea 
                                     value={newContent}
                                     onChange={e => setNewContent(e.target.value)}
                                     placeholder="Tell us what happened..."
                                     rows={5}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-600 focus:ring-2 focus:ring-emerald-500 outline-none resize-none leading-relaxed"
+                                    className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none resize-none leading-relaxed placeholder-slate-400 dark:placeholder-slate-500"
                                     required
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Photo</label>
+                                <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Photo</label>
                                 <div 
                                     onClick={() => fileInputRef.current?.click()}
-                                    className={`h-48 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${imagePreview ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300 hover:border-emerald-400 bg-slate-50'}`}
+                                    className={`h-48 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${imagePreview ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-slate-300 dark:border-slate-600 hover:border-emerald-400 dark:hover:border-emerald-500 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600'}`}
                                 >
                                     {imagePreview ? (
                                         <img src={imagePreview} alt="Preview" className="h-full w-full object-contain rounded-lg" />
                                     ) : (
                                         <>
-                                            <Camera size={32} className="text-slate-400 mb-2" />
-                                            <span className="text-sm font-medium text-slate-500">Click to upload photo</span>
+                                            <Camera size={32} className="text-slate-400 dark:text-slate-500 mb-2" />
+                                            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Click to upload photo</span>
                                         </>
                                     )}
                                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -380,15 +388,15 @@ export default function SuccessStories() {
           <div className="space-y-8">
               {loading ? (
                   Array(3).fill(0).map((_, i) => (
-                      <div key={i} className="bg-white rounded-2xl h-96 animate-pulse shadow-sm"></div>
+                      <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl h-96 animate-pulse shadow-sm border border-slate-100 dark:border-slate-700"></div>
                   ))
               ) : stories.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-3xl shadow-sm">
-                      <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <PenTool size={32} className="text-slate-300" />
+                  <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+                      <div className="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <PenTool size={32} className="text-slate-300 dark:text-slate-500" />
                       </div>
-                      <h3 className="text-xl font-bold text-slate-700">No stories yet</h3>
-                      <p className="text-slate-500">Be the first to share a success story!</p>
+                      <h3 className="text-xl font-bold text-slate-700 dark:text-white">No stories yet</h3>
+                      <p className="text-slate-500 dark:text-slate-400">Be the first to share a success story!</p>
                   </div>
               ) : (
                   stories.map((story, index) => (
@@ -397,23 +405,23 @@ export default function SuccessStories() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden border border-slate-100"
+                        className="bg-white dark:bg-slate-800 rounded-[2rem] shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden border border-slate-100 dark:border-slate-700 transition-colors duration-300"
                       >
                           {/* Author Header */}
-                          <div className="p-6 flex items-center gap-4 border-b border-slate-50">
-                              <div className="w-12 h-12 rounded-full bg-slate-100 overflow-hidden shadow-sm border border-slate-100">
+                          <div className="p-6 flex items-center gap-4 border-b border-slate-50 dark:border-slate-700/50">
+                              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden shadow-sm border border-slate-100 dark:border-slate-600">
                                   {story.author?.avatar_url ? (
                                       <img src={story.author.avatar_url} alt={story.author.full_name} className="w-full h-full object-cover" />
                                   ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-emerald-100 text-emerald-600 font-bold text-lg">
+                                      <div className="w-full h-full flex items-center justify-center bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-bold text-lg">
                                           {story.author?.full_name?.[0] || 'U'}
                                       </div>
                                   )}
                               </div>
                               <div>
-                                  <h3 className="font-bold text-slate-800">{story.author?.full_name || 'Unknown Helper'}</h3>
-                                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium uppercase tracking-wide">
-                                      <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{story.author?.role || 'Rescuer'}</span>
+                                  <h3 className="font-bold text-slate-800 dark:text-white">{story.author?.full_name || 'Unknown Helper'}</h3>
+                                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">
+                                      <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">{story.author?.role || 'Rescuer'}</span>
                                       <span>•</span>
                                       <span className="flex items-center gap-1"><Calendar size={10} /> {new Date(story.created_at).toLocaleDateString()}</span>
                                   </div>
@@ -422,7 +430,7 @@ export default function SuccessStories() {
 
                           {/* Image */}
                           {story.image_url && (
-                              <div className="aspect-video bg-slate-100 relative overflow-hidden group">
+                              <div className="aspect-video bg-slate-100 dark:bg-slate-700 relative overflow-hidden group">
                                   <img src={story.image_url} alt={story.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                               </div>
@@ -430,19 +438,19 @@ export default function SuccessStories() {
 
                           {/* Content */}
                           <div className="p-8 pb-4">
-                              <h2 className="text-2xl font-black text-slate-800 mb-3 leading-tight">{story.title}</h2>
-                              <p className="text-slate-600 leading-relaxed whitespace-pre-line text-lg">
+                              <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-3 leading-tight">{story.title}</h2>
+                              <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line text-lg">
                                   {story.content}
                               </p>
                           </div>
 
                           {/* Actions */}
-                          <div className="px-8 py-4 flex items-center justify-between border-b border-slate-50">
+                          <div className="px-8 py-4 flex items-center justify-between border-b border-slate-50 dark:border-slate-700/50">
                               <button 
                                 onClick={() => handleLike(story.id)}
-                                className={`group flex items-center gap-2 transition-colors ${userLikes.has(story.id) ? 'text-rose-500' : 'text-slate-500 hover:text-rose-500'}`}
+                                className={`group flex items-center gap-2 transition-colors ${userLikes.has(story.id) ? 'text-rose-500' : 'text-slate-500 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400'}`}
                               >
-                                  <div className={`p-2 rounded-full transition-colors ${userLikes.has(story.id) ? 'bg-rose-50' : 'group-hover:bg-rose-50'}`}>
+                                  <div className={`p-2 rounded-full transition-colors ${userLikes.has(story.id) ? 'bg-rose-50 dark:bg-rose-900/20' : 'group-hover:bg-rose-50 dark:group-hover:bg-rose-900/20'}`}>
                                       <Heart 
                                         size={20} 
                                         className={`transition-transform group-active:scale-90 ${userLikes.has(story.id) ? 'fill-rose-500' : ''}`}
@@ -453,9 +461,9 @@ export default function SuccessStories() {
                               
                               <button 
                                 onClick={() => toggleComments(story.id)}
-                                className={`flex items-center gap-2 transition-colors group ${activeStoryId === story.id ? 'text-emerald-600' : 'text-slate-500 hover:text-emerald-600'}`}
+                                className={`flex items-center gap-2 transition-colors group ${activeStoryId === story.id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400'}`}
                               >
-                                  <div className="p-2 rounded-full group-hover:bg-emerald-50 transition-colors">
+                                  <div className="p-2 rounded-full group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 transition-colors">
                                       <MessageCircle size={20} />
                                   </div>
                                   <span className="font-bold text-sm">
@@ -463,8 +471,8 @@ export default function SuccessStories() {
                                   </span>
                               </button>
 
-                              <button className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors group">
-                                  <div className="p-2 rounded-full group-hover:bg-blue-50 transition-colors">
+                              <button className="flex items-center gap-2 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors group">
+                                  <div className="p-2 rounded-full group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors">
                                       <Share2 size={20} />
                                   </div>
                               </button>
@@ -477,24 +485,24 @@ export default function SuccessStories() {
                                       initial={{ height: 0, opacity: 0 }}
                                       animate={{ height: 'auto', opacity: 1 }}
                                       exit={{ height: 0, opacity: 0 }}
-                                      className="bg-slate-50 border-t border-slate-100 overflow-hidden"
+                                      className="bg-slate-50 dark:bg-slate-900/30 border-t border-slate-100 dark:border-slate-700/50 overflow-hidden"
                                   >
                                       <div className="p-6 space-y-4">
                                           {/* Comment Input */}
                                           {user ? (
                                               <div className="flex gap-3 items-start">
-                                                  <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden flex-shrink-0">
+                                                  <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
                                                       {user.user_metadata?.avatar_url && (
                                                           <img src={user.user_metadata.avatar_url} alt="Me" className="w-full h-full object-cover" />
                                                       )}
                                                   </div>
                                                   <div className="flex-1 relative">
                                                       <textarea 
-                                                          value={newComment}
-                                                          onChange={e => setNewComment(e.target.value)}
+                                                          value={commentInputs[story.id] || ''}
+                                                          onChange={e => setCommentInputs(prev => ({ ...prev, [story.id]: e.target.value }))}
                                                           placeholder="Write a warm comment..."
                                                           rows={1}
-                                                          className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 pr-12 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none overflow-hidden"
+                                                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-3 pr-12 text-sm text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none resize-none overflow-hidden placeholder-slate-400 dark:placeholder-slate-500"
                                                           onKeyDown={e => {
                                                               if(e.key === 'Enter' && !e.shiftKey) {
                                                                   e.preventDefault();
@@ -504,7 +512,7 @@ export default function SuccessStories() {
                                                       />
                                                       <button 
                                                           onClick={() => postComment(story.id)}
-                                                          disabled={!newComment.trim()}
+                                                          disabled={!commentInputs[story.id]?.trim()}
                                                           className="absolute right-2 top-2 p-1.5 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 disabled:opacity-50 disabled:hover:bg-emerald-600 transition-all"
                                                       >
                                                           <Send size={14} />
@@ -526,21 +534,21 @@ export default function SuccessStories() {
                                               ) : (
                                                   comments[story.id].map(comment => (
                                                       <div key={comment.id} className="flex gap-3 group/comment">
-                                                          <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden flex-shrink-0 mt-1">
+                                                          <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0 mt-1">
                                                               {comment.user?.avatar_url ? (
                                                                   <img src={comment.user.avatar_url} alt={comment.user.full_name} className="w-full h-full object-cover" />
                                                               ) : (
-                                                                  <div className="w-full h-full flex items-center justify-center bg-slate-300 text-slate-500 text-xs font-bold">
+                                                                  <div className="w-full h-full flex items-center justify-center bg-slate-300 dark:bg-slate-600 text-slate-500 dark:text-slate-300 text-xs font-bold">
                                                                       {comment.user?.full_name?.[0] || 'U'}
                                                                   </div>
                                                               )}
                                                           </div>
-                                                          <div className="flex-1 bg-white p-3 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm relative">
+                                                          <div className="flex-1 bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tl-none border border-slate-200 dark:border-slate-700 shadow-sm relative">
                                                               <div className="flex justify-between items-start mb-1">
-                                                                  <span className="font-bold text-xs text-slate-800">{comment.user?.full_name || 'User'}</span>
-                                                                  <span className="text-[10px] text-slate-400">{new Date(comment.created_at).toLocaleDateString()}</span>
+                                                                  <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{comment.user?.full_name || 'User'}</span>
+                                                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">{new Date(comment.created_at).toLocaleDateString()}</span>
                                                               </div>
-                                                              <p className="text-sm text-slate-600 leading-relaxed">{comment.content}</p>
+                                                              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{comment.content}</p>
                                                               
                                                               {user && user.id === comment.user_id && (
                                                                   <button 

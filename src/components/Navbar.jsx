@@ -6,7 +6,7 @@ import {
   Menu, X, Heart, LogOut, Stethoscope, 
   MapPin, Calendar, ChevronDown, Bell, 
   PawPrint, Home, Megaphone, Activity, 
-  User, Dog, AlertTriangle
+  User, Dog, AlertTriangle, Clipboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -63,14 +63,14 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-4 left-0 right-0 z-50 px-4">
-      <div className="max-w-7xl mx-auto bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-white/50 px-6 py-3 flex justify-between items-center transition-all duration-300">
+      <div className="max-w-7xl mx-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-white/50 dark:border-slate-700/50 px-6 py-3 flex justify-between items-center transition-all duration-300">
         
         {/* LOGO */}
         <Link to="/" className="flex items-center gap-2 group">
           <div className="bg-gradient-to-br from-rose-500 to-orange-500 p-2 rounded-full shadow-md transform group-hover:rotate-12 transition-transform">
             <PawPrint size={20} fill="white" className="text-white" />
           </div>
-          <span className="text-xl font-black bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent tracking-tight hidden sm:block">
+          <span className="text-xl font-black bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-200 bg-clip-text text-transparent tracking-tight hidden sm:block">
             PetLink
           </span>
         </Link>
@@ -89,8 +89,8 @@ export default function Navbar() {
                 label="Adoption" 
                 icon={Dog}
             >
-                <Link to="/adopt" className="block px-4 py-2 text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">Browse Pets</Link>
-                <Link to="/adoption-requests" className="block px-4 py-2 text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">Requests</Link>
+                <Link to="/adopt" className="block px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-slate-700 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">Browse Pets</Link>
+                <Link to="/adoption-requests" className="block px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-slate-700 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">Requests</Link>
             </DropdownPill>
           ) : (
             <NavPill to="/adopt" active={isActive('/adopt')} icon={Dog}>Adopt</NavPill>
@@ -102,9 +102,9 @@ export default function Navbar() {
                 label="Care" 
                 icon={Heart}
             >
-                <Link to="/book-appointment" className="block px-4 py-2 text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">Book Appt.</Link>
-                <Link to="/find-vet" className="block px-4 py-2 text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">Find Vet</Link>
-                <Link to="/my-bookings" className="block px-4 py-2 text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">My Bookings</Link>
+                <Link to="/book-appointment" className="block px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-slate-700 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">Book Appt.</Link>
+                <Link to="/find-vet" className="block px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-slate-700 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">Find Vet</Link>
+                <Link to="/my-bookings" className="block px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-slate-700 hover:text-rose-600 rounded-lg text-sm font-medium transition-colors">My Bookings</Link>
             </DropdownPill>
           )}
 
@@ -121,7 +121,7 @@ export default function Navbar() {
                    <div className="relative">
                        <button 
                          onClick={() => setShowNotifications(!showNotifications)}
-                         className="p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all relative"
+                         className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-all relative"
                        >
                            <Bell size={20} />
                            {notifications.length > 0 && (
@@ -137,9 +137,9 @@ export default function Navbar() {
                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                    animate={{ opacity: 1, y: 0, scale: 1 }}
                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                   className="absolute right-0 top-full mt-4 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 origin-top-right"
+                                   className="absolute right-0 top-full mt-4 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-50 origin-top-right"
                                >
-                                   <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 font-bold text-slate-700 text-sm">
+                                   <div className="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-b border-slate-100 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-300 text-sm">
                                        Notifications
                                    </div>
                                    <div className="max-h-64 overflow-y-auto">
@@ -157,15 +157,15 @@ export default function Navbar() {
                                                         }
                                                         setShowNotifications(false);
                                                     }}
-                                                    className="p-4 border-b border-slate-50 hover:bg-rose-50 cursor-pointer transition-colors"
+                                                    className="p-4 border-b border-slate-50 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                                                >
-                                                   <p className="text-sm text-slate-600 mb-1">{n.message}</p>
+                                                   <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">{n.message}</p>
                                                    <span className="text-xs text-slate-400">{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                </div>
                                            ))
                                        )}
                                    </div>
-                                   <Link to="/notifications" onClick={() => setShowNotifications(false)} className="block p-3 text-center text-rose-500 hover:bg-slate-50 font-bold text-sm bg-slate-50/50">
+                                   <Link to="/notifications" onClick={() => setShowNotifications(false)} className="block p-3 text-center text-rose-500 hover:bg-slate-50 dark:hover:bg-slate-700 font-bold text-sm bg-slate-50/50 dark:bg-slate-900/50">
                                        View All
                                    </Link>
                                </motion.div>
@@ -174,7 +174,7 @@ export default function Navbar() {
                    </div>
 
                    {/* PROFILE */}
-                   <Link to="/profile" className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-rose-100 hover:text-rose-600 transition-colors overflow-hidden border border-slate-200">
+                   <Link to="/profile" className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 transition-colors overflow-hidden border border-slate-200 dark:border-slate-700">
                         {user?.avatar_url ? (
                             <img src={user.avatar_url} alt="User" className="w-full h-full object-cover" />
                         ) : (
@@ -182,18 +182,18 @@ export default function Navbar() {
                         )}
                    </Link>
 
-                   <button onClick={handleLogout} className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-rose-500 transition-colors" title="Logout">
+                   <button onClick={handleLogout} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors" title="Logout">
                        <LogOut size={18} />
                    </button>
                 </>
             ) : (
-                <Link to="/auth" className="bg-slate-900 text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-slate-800 hover:shadow-lg hover:shadow-slate-200 transition-all">
+                <Link to="/auth" className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-2 rounded-full font-bold text-sm hover:bg-slate-800 dark:hover:bg-slate-200 hover:shadow-lg hover:shadow-slate-200 dark:hover:shadow-slate-900/20 transition-all">
                     Login
                 </Link>
             )}
 
             {/* MOBILE TOGGLE */}
-            <button className="md:hidden p-2 text-slate-600" onClick={() => setIsOpen(!isOpen)}>
+            <button className="md:hidden p-2 text-slate-600 dark:text-slate-300" onClick={() => setIsOpen(!isOpen)}>
                 {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
         </div>
@@ -206,7 +206,7 @@ export default function Navbar() {
                 initial={{ opacity: 0, y: -20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                className="md:hidden absolute top-20 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/50 p-4 z-40 overflow-hidden"
+                className="md:hidden absolute top-20 left-4 right-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/50 dark:border-slate-700 p-4 z-40 overflow-hidden"
             >
                 <div className="flex flex-col gap-2">
                     <MobileLink to="/" onClick={() => setIsOpen(false)} icon={Home}>Home</MobileLink>
@@ -217,7 +217,7 @@ export default function Navbar() {
                     
                     {!['rescuer', 'shelter', 'vet'].includes(userRole) && (
                         <>
-                            <div className="h-px bg-slate-100 my-2" />
+                            <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
                             <MobileLink to="/book-appointment" onClick={() => setIsOpen(false)} icon={Calendar}>Book Appointment</MobileLink>
                             <MobileLink to="/find-vet" onClick={() => setIsOpen(false)} icon={MapPin}>Find Vet</MobileLink>
                             <MobileLink to="/my-bookings" onClick={() => setIsOpen(false)} icon={Heart}>My Bookings</MobileLink>
@@ -234,9 +234,9 @@ export default function Navbar() {
 
                     {session ? (
                          <>
-                            <div className="h-px bg-slate-100 my-2" />
+                            <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
                             <MobileLink to="/profile" onClick={() => setIsOpen(false)} icon={User}>My Profile</MobileLink>
-                            <button onClick={handleLogout} className="w-full text-left p-4 rounded-xl text-slate-500 font-bold hover:bg-slate-50 flex items-center gap-3">
+                            <button onClick={handleLogout} className="w-full text-left p-4 rounded-xl text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3">
                                 <LogOut size={20} /> Logout
                             </button>
                          </>
@@ -253,7 +253,7 @@ export default function Navbar() {
 
 // Sub-components for cleaner code
 const NavPill = ({ to, children, active, icon: Icon }) => (
-    <Link to={to} className={`relative px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold transition-all ${active ? 'text-rose-600 bg-rose-50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>
+    <Link to={to} className={`relative px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold transition-all ${active ? 'text-rose-600 bg-rose-50 dark:bg-rose-900/30' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
         <Icon size={16} className={active ? "text-rose-500" : "text-slate-400"} />
         {children}
         {active && (
@@ -272,7 +272,7 @@ const DropdownPill = ({ active, label, icon: Icon, children }) => {
             onMouseEnter={() => setIsOpen(true)}
             onMouseLeave={() => setIsOpen(false)}
         >
-            <button className={`relative px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold transition-all ${active ? 'text-rose-600 bg-rose-50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>
+            <button className={`relative px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold transition-all ${active ? 'text-rose-600 bg-rose-50 dark:bg-rose-900/30' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
                 <Icon size={16} className={active ? "text-rose-500" : "text-slate-400"} />
                 {label} <ChevronDown size={14} />
                 {active && (
@@ -288,7 +288,7 @@ const DropdownPill = ({ active, label, icon: Icon, children }) => {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-50"
+                        className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-2 z-50"
                     >
                         {children}
                     </motion.div>
@@ -299,7 +299,7 @@ const DropdownPill = ({ active, label, icon: Icon, children }) => {
 }
 
 const MobileLink = ({ to, onClick, icon: Icon, children }) => (
-    <Link to={to} onClick={onClick} className="p-4 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors flex items-center gap-3">
+    <Link to={to} onClick={onClick} className="p-4 rounded-xl text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-3">
         <Icon size={20} className="text-slate-400" />
         {children}
     </Link>

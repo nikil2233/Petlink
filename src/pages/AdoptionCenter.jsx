@@ -128,20 +128,20 @@ export default function AdoptionCenter() {
   });
 
   return (
-    <div className="page-container" style={{ background: '#f8fafc', minHeight: '100vh', paddingTop: '7rem' }}>
+    <div className="page-container bg-slate-50 dark:bg-slate-900 transition-colors duration-300" style={{ minHeight: '100vh', paddingTop: '7rem' }}>
       <div className="container mx-auto px-4">
         
         {/* Top Header - Hero Card */}
-        <div className="relative w-full rounded-[40px] overflow-hidden shadow-sm border border-slate-100 bg-gradient-to-r from-gray-50 to-white flex items-center" style={{ minHeight: '450px' }}>
+        <div className="relative w-full rounded-[40px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-900 flex items-center transition-colors duration-300" style={{ minHeight: '450px' }}>
             
             {/* Background Image - Absolute Right */}
             <div className="absolute right-0 top-0 h-full w-[60%] pointer-events-none">
                 <img 
                     src="https://images.unsplash.com/photo-1623387641168-d9803ddd3f35?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80" 
                     alt="Golden Retriever Puppy and Ginger Kitten" 
-                    className="w-full h-full object-cover object-center mix-blend-multiply opacity-90" 
+                    className="w-full h-full object-cover object-center mix-blend-multiply opacity-90 dark:opacity-50" 
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-gray-50 via-white/20 to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-gray-50 via-white/20 to-transparent dark:from-slate-800 dark:via-slate-900/20"></div>
             </div>
 
             {/* Content Container - Grid System to prevent overlap */}
@@ -149,19 +149,19 @@ export default function AdoptionCenter() {
                 
                 {/* Left Text Column */}
                 <div className="w-full md:w-1/2 pt-10 md:pt-0">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100/80 text-orange-700 text-xs font-bold mb-6 border border-orange-200">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100/80 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold mb-6 border border-orange-200 dark:border-orange-900/50">
                         <PawPrint size={12} /> #1 Pet Adoption Platform
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-[900] text-[#1a202c] leading-[1.1] tracking-tight mb-6">
+                    <h1 className="text-5xl md:text-7xl font-[900] text-[#1a202c] dark:text-white leading-[1.1] tracking-tight mb-6">
                         Find Your New <br/>
                         Best Friend
                     </h1>
-                    <p className="text-lg md:text-xl text-slate-500 font-medium max-w-md leading-relaxed mb-8">
+                    <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 font-medium max-w-md leading-relaxed mb-8">
                         Every pet deserves a second chance. <br/> Open your heart and home today.
                     </p>
                     <button 
                         onClick={handleListPet}
-                        className="bg-slate-900 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center gap-3 group">
+                        className="bg-slate-900 dark:bg-indigo-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center gap-3 group">
                         Get Started 
                         <div className="bg-white/20 rounded-full p-1 group-hover:bg-white/30 transition-colors">
                             <Plus size={18}/>
@@ -175,14 +175,14 @@ export default function AdoptionCenter() {
 
         {/* Search Bar - Stable Flex Layout with Explicit Styles */}
         <div className="max-w-3xl mx-auto mb-20 relative z-30 -mt-12">
-            <div className="bg-white rounded-full shadow-2xl p-3 flex items-center border border-slate-100" style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)' }}>
-                <div className="pl-6 md:pl-8 text-slate-400">
+            <div className="bg-white dark:bg-slate-800 rounded-full shadow-2xl p-3 flex items-center border border-slate-100 dark:border-slate-700" style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)' }}>
+                <div className="pl-6 md:pl-8 text-slate-400 dark:text-slate-500">
                     <Search size={28} strokeWidth={2.5} />
                 </div>
                 <input 
                     type="text"
                     placeholder="Search by name, breed, or location..."
-                    className="flex-1 bg-transparent border-none outline-none text-xl text-slate-700 placeholder:text-slate-400 font-semibold px-6 py-4"
+                    className="flex-1 bg-transparent border-none outline-none text-xl text-slate-700 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-semibold px-6 py-4"
                     style={{ background: 'transparent', border: 'none', outline: 'none' }}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -239,13 +239,13 @@ export default function AdoptionCenter() {
         {loading ? (
              <div className="text-center py-20">
                 <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-slate-500 font-medium">Loading tails...</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">Loading tails...</p>
              </div>
         ) : filteredAnimals.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-slate-100">
-                <PawPrint size={64} className="mx-auto mb-4 text-slate-200" />
-                <h3 className="text-2xl font-bold text-slate-800 mb-2">No pets found</h3>
-                <p className="text-slate-500">Try adjusting your filters to find a furry friend.</p>
+            <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <PawPrint size={64} className="mx-auto mb-4 text-slate-200 dark:text-slate-700" />
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">No pets found</h3>
+                <p className="text-slate-500 dark:text-slate-400">Try adjusting your filters to find a furry friend.</p>
             </div>
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -291,37 +291,37 @@ export default function AdoptionCenter() {
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-white rounded-[2rem] p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden"
+                    className="bg-white dark:bg-slate-800 rounded-[2rem] p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden"
                     onClick={e => e.stopPropagation()}
                 >
                     <button 
                         onClick={() => setAccessDeniedType(null)}
-                        className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
+                        className="absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                     >
-                        <X size={20} className="text-slate-500" />
+                        <X size={20} className="text-slate-500 dark:text-slate-400" />
                     </button>
 
-                    <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Lock size={36} className="text-orange-500" />
+                    <div className="w-20 h-20 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Lock size={36} className="text-orange-500 dark:text-orange-400" />
                     </div>
 
                     {accessDeniedType === 'login' ? (
                         <>
-                            <h3 className="text-2xl font-black text-slate-800 mb-2">Partner Access Only</h3>
-                            <p className="text-slate-500 mb-8 leading-relaxed">
+                            <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Partner Access Only</h3>
+                            <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
                                 Please log in as an authorized <strong>NGO, Shelter, or Rescuer</strong> to list a pet for adoption.
                             </p>
                             <button 
                                 onClick={() => navigate('/auth')}
-                                className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl hover:bg-slate-800 transition-all shadow-lg"
+                                className="w-full bg-slate-900 dark:bg-slate-700 text-white font-bold py-3.5 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-600 transition-all shadow-lg"
                             >
                                 Login Now
                             </button>
                         </>
                     ) : ( 
                         <>
-                            <h3 className="text-2xl font-black text-slate-800 mb-2">Restricted Feature</h3>
-                            <p className="text-slate-500 mb-8 leading-relaxed">
+                            <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Restricted Feature</h3>
+                            <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
                                 Listing pets is restricted to verified <strong>NGOs and Shelters</strong>. Citizens can browse and adopt, but cannot upload listings.
                             </p>
                             <button 
@@ -348,8 +348,8 @@ function CategoryCircle({ icon, label, active, onClick, colorClass = "text-slate
             onClick={onClick}
             className={`flex flex-col items-center gap-2 group transition-all duration-300 ${active ? '-translate-y-1' : 'hover:-translate-y-1'}`}
         >
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-md transition-all duration-300 border-2 ${active ? 'bg-orange-50 border-orange-500 text-orange-600' : 'bg-white border-slate-100 group-hover:border-orange-200 text-slate-400'}`}>
-                <div className={active ? 'text-orange-600' : ''}>
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-md transition-all duration-300 border-2 ${active ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-500 dark:border-orange-500 text-orange-600 dark:text-orange-400' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 group-hover:border-orange-200 dark:group-hover:border-orange-900 text-slate-400 dark:text-slate-500'}`}>
+                <div className={active ? 'text-orange-600 dark:text-orange-400' : ''}>
                     {icon}
                 </div>
             </div>
@@ -362,10 +362,10 @@ function PetCard({ animal, isWishlisted, onToggleWishlist, onClick }) {
     return (
         <div 
             onClick={onClick}
-            className="bg-white rounded-[2rem] p-3 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer group hover:-translate-y-2 border border-slate-100"
+            className="bg-white dark:bg-slate-800 rounded-[2rem] p-3 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer group hover:-translate-y-2 border border-slate-100 dark:border-slate-700"
         >
             {/* Image Container */}
-            <div className="relative h-64 rounded-[1.5rem] overflow-hidden mb-4 bg-slate-100">
+            <div className="relative h-64 rounded-[1.5rem] overflow-hidden mb-4 bg-slate-100 dark:bg-slate-700">
                 <img 
                     src={animal.image_url || `https://source.unsplash.com/400x300/?${animal.species}`} 
                     alt={animal.name}
@@ -392,7 +392,7 @@ function PetCard({ animal, isWishlisted, onToggleWishlist, onClick }) {
             {/* Content */}
             <div className="px-2 pb-2">
                 <div className="flex justify-between items-start mb-1">
-                    <h3 className="text-2xl font-bold text-slate-800">{animal.name}</h3>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{animal.name}</h3>
                     <div className="flex gap-2">
                         {/* Gender Pill */}
                         <span className={`w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-bold text-white ${animal.gender === 'Male' ? 'bg-blue-400' : 'bg-pink-400'}`}>
@@ -401,10 +401,10 @@ function PetCard({ animal, isWishlisted, onToggleWishlist, onClick }) {
                     </div>
                 </div>
                 
-                <p className="text-slate-500 font-medium mb-4">{animal.breed}</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium mb-4">{animal.breed}</p>
 
                 <div className="flex items-center justify-between mt-auto">
-                    <div className="text-slate-400 text-sm font-semibold flex items-center gap-1">
+                    <div className="text-slate-400 dark:text-slate-500 text-sm font-semibold flex items-center gap-1">
                         <MapPin size={14} /> {animal.location || 'Colombo'}
                     </div>
 

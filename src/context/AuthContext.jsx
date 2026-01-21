@@ -100,8 +100,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = async () => {
-      await supabase.auth.signOut();
-      // State updates handled by onAuthStateChange
+      // Force cleanup local state immediately
+      setSession(null);
+      setUser(null);
+      setRole(null);
+      
+      // Clear all Supabase related local storage
+      Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+              localStorage.removeItem(key);
+          }
+      });
+
+      try {
+          await supabase.auth.signOut();
+      } catch (error) {
+          console.error("Error signing out from Supabase:", error);
+      }
   };
 
   const value = {

@@ -89,7 +89,7 @@ export default function MyBookings() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans transition-colors duration-300">
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-12">
         
         {/* Header Section */}
@@ -100,13 +100,13 @@ export default function MyBookings() {
                transition={{ duration: 0.5 }}
             >
                 <div className="flex items-center gap-2 mb-2">
-                    <div className="bg-amber-100 p-2 rounded-xl">
-                        <Activity className="text-amber-600" size={20} />
+                    <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-xl">
+                        <Activity className="text-amber-600 dark:text-amber-500" size={20} />
                     </div>
-                    <span className="text-sm font-bold text-amber-600 tracking-wider uppercase">Pet Care Journey</span>
+                    <span className="text-sm font-bold text-amber-600 dark:text-amber-500 tracking-wider uppercase">Pet Care Journey</span>
                 </div>
-                <h1 className="text-4xl font-black text-slate-800 tracking-tight mb-2">My Bookings</h1>
-                <p className="text-slate-500 font-medium text-lg">Manage your appointments and medical history.</p>
+                <h1 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight mb-2">My Bookings</h1>
+                <p className="text-slate-500 dark:text-slate-400 font-medium text-lg">Manage your appointments and medical history.</p>
             </motion.div>
 
             <motion.div
@@ -116,7 +116,7 @@ export default function MyBookings() {
             >
                 <Link 
                     to="/book-appointment" 
-                    className="inline-flex items-center gap-2 bg-slate-900 text-white px-[20px] py-[12px] rounded-[12px] font-bold shadow-lg shadow-slate-200 hover:bg-slate-800 hover:scale-105 active:scale-95 transition-all duration-300"
+                    className="inline-flex items-center gap-2 bg-slate-900 dark:bg-slate-700 text-white px-[20px] py-[12px] rounded-[12px] font-bold shadow-lg shadow-slate-200 dark:shadow-none hover:bg-slate-800 dark:hover:bg-slate-600 hover:scale-105 active:scale-95 transition-all duration-300"
                 >
                     <Calendar size={18} /> New Appointment
                 </Link>
@@ -124,7 +124,7 @@ export default function MyBookings() {
         </div>
 
         {/* Animated Tabs */}
-        <div className="flex gap-2 mb-8 bg-white p-1.5 rounded-[12px] border border-slate-100 shadow-sm w-fit mx-auto md:mx-0">
+        <div className="flex gap-2 mb-8 bg-white dark:bg-slate-800 p-1.5 rounded-[12px] border border-slate-100 dark:border-slate-700 shadow-sm w-fit mx-auto md:mx-0">
             {['upcoming', 'pending', 'history'].map((tab) => {
                 const isActive = activeTab === tab;
                 const count = tab === 'upcoming' 
@@ -138,7 +138,7 @@ export default function MyBookings() {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`relative px-[20px] py-[10px] rounded-[8px] text-[14px] font-bold transition-all duration-300 z-10 flex items-center gap-2 ${
-                            isActive ? 'text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                            isActive ? 'text-slate-900 dark:text-slate-900' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                         }`}
                     >
                         {isActive && (
@@ -150,7 +150,7 @@ export default function MyBookings() {
                         )}
                         <span>{getTabLabel(tab)}</span>
                         {count > 0 && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-slate-900 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                                 {count}
                             </span>
                         )}
@@ -179,13 +179,13 @@ export default function MyBookings() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.4 }}
-                    className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-12 text-center max-w-lg mx-auto"
+                    className="bg-white dark:bg-slate-800 rounded-[24px] border border-slate-100 dark:border-slate-700 shadow-sm p-12 text-center max-w-lg mx-auto"
                 >
-                    <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Calendar size={32} className="text-slate-300" />
+                    <div className="bg-slate-50 dark:bg-slate-700 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Calendar size={32} className="text-slate-300 dark:text-slate-400" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-2">No {activeTab} appointments</h3>
-                    <p className="text-slate-500 mb-8 leading-relaxed">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">No {activeTab} appointments</h3>
+                    <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
                         {activeTab === 'upcoming' 
                             ? "Your schedule is clear! Need to book a checkup?" 
                             : activeTab === 'pending'
@@ -215,19 +215,19 @@ export default function MyBookings() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="group bg-white rounded-[20px] p-6 border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-100 transition-all duration-300 relative overflow-hidden"
+                            className="group bg-white dark:bg-slate-800 rounded-[20px] p-6 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-amber-100 dark:hover:border-slate-600 transition-all duration-300 relative overflow-hidden"
                         >
                             {/* Decorative gradient bar on left */}
                             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
                                 booking.status === 'confirmed' ? 'bg-emerald-500' :
                                 booking.status === 'pending' ? 'bg-amber-500' :
-                                booking.status === 'cancelled' ? 'bg-rose-500' : 'bg-slate-300'
+                                booking.status === 'cancelled' ? 'bg-rose-500' : 'bg-slate-300 dark:bg-slate-600'
                             }`} />
 
                             <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                                 {/* Service Icon */}
                                 <div className={`w-16 h-16 rounded-[16px] flex items-center justify-center shrink-0 shadow-inner ${
-                                    booking.service_type === 'sterilization' ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'
+                                    booking.service_type === 'sterilization' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 dark:text-rose-400' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-500 dark:text-blue-400'
                                 }`}>
                                     {booking.service_type === 'sterilization' ? <Syringe size={28} strokeWidth={1.5} /> : <Stethoscope size={28} strokeWidth={1.5} />}
                                 </div>
@@ -235,14 +235,14 @@ export default function MyBookings() {
                                 {/* Main Info */}
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-xl font-bold text-slate-800 capitalize tracking-tight">
+                                        <h3 className="text-xl font-bold text-slate-800 dark:text-white capitalize tracking-tight">
                                             {booking.service_type}
                                         </h3>
                                         <span className={`px-[10px] py-[4px] rounded-full text-[12px] font-bold border capitalize flex items-center gap-1.5 ${
-                                            booking.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                            booking.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                            booking.status === 'cancelled' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
-                                            'bg-slate-100 text-slate-600 border-slate-200'
+                                            booking.status === 'confirmed' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' :
+                                            booking.status === 'pending' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/30' :
+                                            booking.status === 'cancelled' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border-rose-100 dark:border-rose-900/30' : 
+                                            'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600'
                                         }`}>
                                             {booking.status === 'confirmed' ? <CheckCircle size={12} /> : 
                                              booking.status === 'pending' ? <Clock size={12} /> : <AlertCircle size={12} />}
@@ -250,16 +250,16 @@ export default function MyBookings() {
                                         </span>
                                     </div>
 
-                                    <div className="flex flex-col md:flex-row md:items-center gap-y-2 gap-x-6 text-sm text-slate-500 font-medium">
+                                    <div className="flex flex-col md:flex-row md:items-center gap-y-2 gap-x-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
                                         <div className="flex items-center gap-2">
                                             <Calendar size={15} className="text-amber-500" />
-                                            <span className="text-slate-700">
+                                            <span className="text-slate-700 dark:text-slate-300">
                                                 {formatDate(booking.confirmed_date || booking.appointment_date)}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Clock size={15} className="text-amber-500" />
-                                            <span className="text-slate-700">
+                                            <span className="text-slate-700 dark:text-slate-300">
                                                 {booking.confirmed_time || booking.time_slot}
                                             </span>
                                         </div>
@@ -275,7 +275,7 @@ export default function MyBookings() {
                                     {(booking.status === 'upcoming' || booking.status === 'pending') && (
                                         <button 
                                             onClick={() => handleCancel(booking.id)}
-                                            className="px-[16px] py-[8px] rounded-[8px] border border-slate-200 text-slate-500 text-[14px] font-bold hover:border-rose-200 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200 ease"
+                                            className="px-[16px] py-[8px] rounded-[8px] border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 text-[14px] font-bold hover:border-rose-200 dark:hover:border-rose-800 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all duration-200 ease"
                                         >
                                             Cancel
                                         </button>
@@ -304,24 +304,25 @@ export default function MyBookings() {
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="bg-white rounded-[24px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col"
+
+                        className="bg-white dark:bg-slate-800 rounded-[24px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col"
                     >
                         {/* Header */}
-                        <div className="p-8 border-b border-slate-100 flex justify-between items-start bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                        <div className="p-8 border-b border-slate-100 dark:border-slate-700 flex justify-between items-start bg-white/80 dark:bg-slate-800/80 backdrop-blur-md sticky top-0 z-10">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-                                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                                <h2 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
                                         <FileText size={20} />
                                     </div>
                                     Instructions
                                 </h2>
-                                <p className="text-slate-500 font-medium ml-12">
+                                <p className="text-slate-500 dark:text-slate-400 font-medium ml-12">
                                     Details for {instructionsModal.pet_name || 'your pet'}'s visit
                                 </p>
                             </div>
                             <button 
                                 onClick={() => setInstructionsModal(null)}
-                                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
                             >
                                 <X size={24} />
                             </button>
@@ -330,34 +331,35 @@ export default function MyBookings() {
                         {/* Body using CSS Grid for better layout */}
                         <div className="p-8 space-y-8">
                              {/* Vet Info Card */}
-                             <div className="bg-slate-50 p-6 rounded-[16px] border border-slate-100 flex flex-col md:flex-row gap-6">
+                             <div className="bg-slate-50 dark:bg-slate-700/50 p-6 rounded-[16px] border border-slate-100 dark:border-slate-700 flex flex-col md:flex-row gap-6">
                                  <div className="flex-1">
-                                     <h3 className="text-lg font-bold text-slate-800 mb-1">{instructionsModal.vet?.full_name}</h3>
-                                     <p className="text-slate-500 text-sm">{instructionsModal.vet?.address}, {instructionsModal.vet?.city}</p>
+                                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">{instructionsModal.vet?.full_name}</h3>
+                                     <p className="text-slate-500 dark:text-slate-300 text-sm">{instructionsModal.vet?.address}, {instructionsModal.vet?.city}</p>
                                  </div>
                                  <div className="md:text-right">
                                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Contact</p>
-                                     <p className="text-slate-800 font-bold">{instructionsModal.vet?.phone || 'N/A'}</p>
+                                     <p className="text-slate-800 dark:text-white font-bold">{instructionsModal.vet?.phone || 'N/A'}</p>
                                  </div>
                              </div>
 
                              <div className="grid md:grid-cols-2 gap-6">
                                  {/* Pre Surgery */}
+                                 {/* Pre Surgery */}
                                  <div className="space-y-3">
-                                     <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                                     <h4 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                          <Clock size={16} className="text-amber-500" /> Pre-Visit
                                      </h4>
-                                     <div className="p-4 bg-amber-50 border border-amber-100 rounded-[12px] text-amber-900 text-sm leading-relaxed">
+                                     <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 rounded-[12px] text-amber-900 dark:text-amber-400 text-sm leading-relaxed">
                                          {instructionsModal.pre_surgery_instructions || 'No specific instructions provided.'}
                                      </div>
                                  </div>
                                  
                                  {/* Post Surgery */}
                                  <div className="space-y-3">
-                                     <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                                     <h4 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                          <Activity size={16} className="text-emerald-500" /> Post-Care
                                      </h4>
-                                     <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-[12px] text-emerald-900 text-sm leading-relaxed">
+                                     <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 rounded-[12px] text-emerald-900 dark:text-emerald-400 text-sm leading-relaxed">
                                          {instructionsModal.post_surgery_care || 'Standard post-care applies.'}
                                      </div>
                                  </div>
@@ -365,21 +367,21 @@ export default function MyBookings() {
 
                              {/* Special Notes Alert */}
                              {instructionsModal.vet_notes && (
-                                <div className="p-4 bg-rose-50 border border-rose-100 rounded-[12px] flex gap-4">
+                                <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/30 rounded-[12px] flex gap-4">
                                     <AlertCircle className="text-rose-500 flex-shrink-0" size={20} />
                                     <div>
-                                        <h4 className="font-bold text-rose-800 mb-1">Vet's Notes</h4>
-                                        <p className="text-sm text-rose-700">{instructionsModal.vet_notes}</p>
+                                        <h4 className="font-bold text-rose-800 dark:text-rose-400 mb-1">Vet's Notes</h4>
+                                        <p className="text-sm text-rose-700 dark:text-rose-300">{instructionsModal.vet_notes}</p>
                                     </div>
                                 </div>
                              )}
                         </div>
 
                         {/* Footer */}
-                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
+                        <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 flex justify-end">
                             <button 
                                 onClick={() => setInstructionsModal(null)} 
-                                className="px-[24px] py-[10px] rounded-[8px] bg-slate-900 text-white font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                                className="px-[24px] py-[10px] rounded-[8px] bg-slate-900 dark:bg-slate-700 text-white font-bold hover:bg-slate-800 dark:hover:bg-slate-600 transition-all shadow-lg shadow-slate-200 dark:shadow-none"
                             >
                                 Got it
                             </button>

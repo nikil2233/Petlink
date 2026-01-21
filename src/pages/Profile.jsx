@@ -236,8 +236,8 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex justify-center items-center transition-colors duration-300">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 dark:border-indigo-400"></div>
       </div>
     );
   }
@@ -246,14 +246,14 @@ export default function Profile() {
   if (!profile && !error) return null;
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 pt-24 pb-12 px-4">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 pt-24 pb-12 px-4 transition-colors duration-300">
       <div className="container mx-auto max-w-4xl">
         
         {/* HERO SECTION - Only show if profile exists, otherwise just show error below */}
         {profile && (
         <div className="relative mb-8 group">
             <div className={`absolute inset-0 bg-gradient-to-r ${getRoleGradient(profile.role)} rounded-3xl opacity-10 blur-xl transform group-hover:scale-105 transition-transform duration-500`}></div>
-            <div className="relative bg-white/80 backdrop-blur-xl border border-white/50 shadow-xl rounded-3xl p-8 md:p-12 overflow-hidden">
+            <div className="relative bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 shadow-xl rounded-3xl p-8 md:p-12 overflow-hidden transition-colors duration-300">
                 
                 {/* Decorative Background Icon */}
                 <div className="absolute -top-12 -right-12 opacity-5">
@@ -266,12 +266,12 @@ export default function Profile() {
                 <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
                     {/* Avatar with Edit Overlay */}
                     <div className="relative">
-                        <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-gradient-to-tr from-white to-slate-200 shadow-xl">
-                            <div className="w-full h-full rounded-full overflow-hidden bg-slate-100">
+                        <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-gradient-to-tr from-white to-slate-200 dark:from-slate-700 dark:to-slate-800 shadow-xl">
+                            <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700">
                                 {avatarPreview ? (
                                     <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300">
+                                    <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-500">
                                         <User size={64} />
                                     </div>
                                 )}
@@ -289,10 +289,10 @@ export default function Profile() {
                             {getRoleIcon(profile.role)}
                             {getRoleLabel(profile.role)}
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-2">
+                        <h1 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white mb-2">
                             {profile.full_name || 'Your Name'}
                         </h1>
-                        <p className="text-slate-500 text-lg max-w-lg">
+                        <p className="text-slate-500 dark:text-slate-400 text-lg max-w-lg">
                             {profile.about || 'Tell the community about yourself...'}
                         </p>
                     </div>
@@ -303,12 +303,12 @@ export default function Profile() {
 
         {/* FEEDBACK MESSAGES */}
         {message && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl flex items-center gap-2 font-bold animate-in fade-in slide-in-from-top-2">
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400 rounded-xl flex items-center gap-2 font-bold animate-in fade-in slide-in-from-top-2">
                 <CheckCircle size={20} /> {message}
             </div>
         )}
         {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-2 font-bold animate-in fade-in slide-in-from-top-2">
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400 rounded-xl flex items-center gap-2 font-bold animate-in fade-in slide-in-from-top-2">
                 <AlertCircle size={20} /> {error}
                 <button onClick={() => window.location.reload()} className="ml-auto text-sm underline hover:no-underline">Reload Page</button>
             </div>
@@ -319,9 +319,9 @@ export default function Profile() {
             
             {/* LEFT COLUMN - MAIN FORM */}
             <div className="lg:col-span-2 space-y-8">
-                <form onSubmit={handleUpdate} className="bg-white/80 backdrop-blur-lg border border-white/50 shadow-lg rounded-3xl p-6 md:p-8">
+                <form onSubmit={handleUpdate} className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border border-white/50 dark:border-slate-700/50 shadow-lg rounded-3xl p-6 md:p-8 transition-colors duration-300">
                     
-                    <div className="flex items-center gap-2 mb-6 text-slate-800">
+                    <div className="flex items-center gap-2 mb-6 text-slate-800 dark:text-white">
                         <Edit2 size={24} className="text-indigo-500" />
                         <h2 className="text-xl font-bold">Account Details</h2>
                     </div>
@@ -356,16 +356,16 @@ export default function Profile() {
                         {/* Special Role Fields */}
                         {profile.role !== 'user' && (
                             <>
-                                <div className="border-t border-slate-100 my-4 pt-4"></div>
+                                <div className="border-t border-slate-100 dark:border-slate-700 my-4 pt-4"></div>
                                 <InputGroup label="Mission / Goal" icon={<Target size={18} />}>
                                     <textarea name="goal" value={profile.goal || ''} onChange={handleChange} className="input-field min-h-[80px] resize-none" placeholder="What is your organization's mission?" />
                                 </InputGroup>
                                 
-                                <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
-                                    <label className="flex items-center gap-2 text-indigo-900 font-bold mb-3 text-sm">
+                                <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                    <label className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300 font-bold mb-3 text-sm">
                                         <MapPin size={16} /> Pin Exact Location
                                     </label>
-                                    <div className="h-64 rounded-xl overflow-hidden shadow-sm border border-indigo-200">
+                                    <div className="h-64 rounded-xl overflow-hidden shadow-sm border border-indigo-200 dark:border-indigo-800">
                                         <MapPicker 
                                             initialLocation={profile.latitude && profile.longitude ? { lat: profile.latitude, lng: profile.longitude } : null}
                                             onLocationSelect={(loc) => {
@@ -373,17 +373,17 @@ export default function Profile() {
                                             }}
                                         />
                                     </div>
-                                    <p className="text-xs text-indigo-400 mt-2 text-center">Help users find you easily on the map.</p>
+                                    <p className="text-xs text-indigo-400 dark:text-indigo-400 mt-2 text-center">Help users find you easily on the map.</p>
                                 </div>
                             </>
                         )}
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-slate-100">
+                    <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700">
                         <button 
                             type="submit" 
                             disabled={updating}
-                            className="w-full py-4 rounded-xl bg-slate-900 text-white font-bold text-lg shadow-xl shadow-slate-200 hover:-translate-y-1 hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+                            className="w-full py-4 rounded-xl bg-slate-900 dark:bg-indigo-600 text-white font-bold text-lg shadow-xl shadow-slate-200 dark:shadow-none hover:-translate-y-1 hover:shadow-2xl transition-all flex items-center justify-center gap-2"
                         >
                             {updating ? 'Saving...' : <><Save size={20} /> Save Changes</>}
                         </button>
@@ -394,15 +394,15 @@ export default function Profile() {
             {/* RIGHT COLUMN - SECURITY & EXTRAS */}
             <div className="lg:col-span-1 space-y-8">
                 {/* Security Card */}
-                <div className="bg-white/80 backdrop-blur-lg border border-white/50 shadow-lg rounded-3xl p-6 md:p-8">
-                    <div className="flex items-center gap-2 mb-6 text-slate-800">
+                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border border-white/50 dark:border-slate-700/50 shadow-lg rounded-3xl p-6 md:p-8 transition-colors duration-300">
+                    <div className="flex items-center gap-2 mb-6 text-slate-800 dark:text-white">
                         <Shield size={24} className="text-emerald-500" />
                         <h2 className="text-xl font-bold">Security</h2>
                     </div>
 
                     {pwdMsg && (
                         <div className={`mb-4 p-3 rounded-xl text-sm font-bold flex items-center gap-2 ${
-                            pwdMsg.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
+                            pwdMsg.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
                         }`}>
                             {pwdMsg.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
                             {pwdMsg.text}
@@ -413,14 +413,14 @@ export default function Profile() {
                         <InputGroup label="Current Password" icon={<Lock size={16} />}>
                             <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="input-field" placeholder="Enter current password" />
                         </InputGroup>
-                        <div className="border-t border-slate-100 my-2"></div>
+                        <div className="border-t border-slate-100 dark:border-slate-700 my-2"></div>
                         <InputGroup label="New Password" icon={<Lock size={16} />}>
                             <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input-field" placeholder="Min 8 chars" />
                         </InputGroup>
                         <InputGroup label="Confirm Password" icon={<Lock size={16} />}>
                             <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input-field" placeholder="Repeat password" />
                         </InputGroup>
-                        <button type="submit" className="w-full py-3 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors">
+                        <button type="submit" className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
                             Update Password
                         </button>
                     </form>
@@ -451,6 +451,21 @@ export default function Profile() {
             background-color: #f8fafc;
             color: #94a3b8;
         }
+        
+        /* Dark Mode Overrides */
+        [data-theme="dark"] .input-field {
+            background-color: #0f172a; /* slate-900 */
+            border-color: #334155; /* slate-700 */
+            color: #f8fafc; /* slate-50 */
+        }
+        [data-theme="dark"] .input-field:focus {
+            border-color: #818cf8; /* indigo-400 */
+            box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.1);
+        }
+        [data-theme="dark"] .input-field:disabled {
+            background-color: #1e293b; /* slate-800 */
+            color: #64748b; /* slate-500 */
+        }
       `}</style>
     </div>
   );
@@ -459,9 +474,9 @@ export default function Profile() {
 // Helper Components
 const InputGroup = ({ label, icon, children }) => (
     <div className="relative group">
-        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1">{label}</label>
+        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">{label}</label>
         <div className="relative">
-            <div className="absolute top-3.5 left-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+            <div className="absolute top-3.5 left-3.5 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400 transition-colors">
                 {icon}
             </div>
             {children}

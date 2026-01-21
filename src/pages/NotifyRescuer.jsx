@@ -176,8 +176,10 @@ export default function NotifyRescuer() {
       removeImage({ stopPropagation: () => {} });
       window.scrollTo(0,0);
     } catch (err) {
-      console.error(err);
-      setMsg({ type: 'error', text: 'Failed to submit report. Please try again.' });
+      console.error("DEBUG: NotifyRescuer Submission Error:", err);
+      // Try to extract a more specific message if available
+      const specificMsg = err.message || err.error_description || JSON.stringify(err);
+      setMsg({ type: 'error', text: `Failed to submit report. Error: ${specificMsg}` });
       window.scrollTo(0,0);
     } finally {
       setLoading(false);
@@ -337,9 +339,9 @@ export default function NotifyRescuer() {
                 transition={{ duration: 0.6, delay: 0.4 }}
                 className="flex-1 w-full max-w-2xl"
             >
-                <div className="bg-white/90 backdrop-blur-xl border border-white/20 p-6 md:p-8 rounded-[2.5rem] shadow-2xl shadow-black/50">
+                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-white/20 dark:border-slate-700 p-6 md:p-8 rounded-[2.5rem] shadow-2xl shadow-black/50 transition-colors duration-300">
                     
-                    <h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
                         <span className="w-8 h-1 bg-orange-500 rounded-full"></span>
                         Submit Report
                     </h3>
@@ -350,7 +352,7 @@ export default function NotifyRescuer() {
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
                                 exit={{ opacity: 0, height: 0 }}
-                                className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}
+                                className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${msg.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30'}`}
                             >
                                 {msg.type === 'success' ? <Shield size={20} /> : <AlertTriangle size={20} />}
                                 <span className="font-medium">{msg.text}</span>
@@ -372,7 +374,7 @@ export default function NotifyRescuer() {
                                         className={`py-3 px-2 rounded-xl text-sm font-bold transition-all duration-300 ${
                                             urgency === level.id 
                                                 ? `${level.color} text-white shadow-lg scale-105` 
-                                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                                : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
                                         }`}
                                     >
                                         {level.label}
@@ -390,8 +392,8 @@ export default function NotifyRescuer() {
                                    <MapPicker onLocationSelect={(loc) => setCoords(loc)} rescuerLocation={rescuerCoords} />
                                 </div>
                                 {!coords && !rescuerCoords && (
-                                    <div className="absolute inset-0 pointer-events-none bg-slate-900/5 flex items-center justify-center">
-                                        <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-sm text-xs font-bold text-slate-500 flex items-center gap-2">
+                                    <div className="absolute inset-0 pointer-events-none bg-slate-900/5 dark:bg-slate-900/50 flex items-center justify-center">
+                                        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur px-4 py-2 rounded-full shadow-sm text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
                                             <Navigation size={14} /> Tap map to pin
                                         </div>
                                     </div>
@@ -405,7 +407,7 @@ export default function NotifyRescuer() {
                                     placeholder="Add address details (e.g. Opposite the park)..."
                                     value={locationName}
                                     onChange={(e) => setLocationName(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 outline-none focus:ring-2 focus:ring-orange-400 transition-all placeholder:text-slate-400 focus:bg-white"
+                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-400 transition-all placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-600"
                                 />
                             </div>
                         </div>
@@ -420,8 +422,8 @@ export default function NotifyRescuer() {
                                     onClick={() => fileInputRef.current?.click()}
                                     className={`relative h-28 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${
                                         imagePreview 
-                                            ? 'border-orange-500 bg-orange-50' 
-                                            : 'border-slate-300 hover:border-orange-400 hover:bg-orange-50/10 bg-slate-50'
+                                            ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' 
+                                            : 'border-slate-300 dark:border-slate-600 hover:border-orange-400 hover:bg-orange-50/10 dark:hover:bg-orange-900/10 bg-slate-50 dark:bg-slate-700'
                                     }`}
                                  >
                                     {imagePreview ? (
@@ -429,15 +431,15 @@ export default function NotifyRescuer() {
                                             <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                                             <button 
                                                 onClick={removeImage}
-                                                className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-md text-rose-500 hover:bg-rose-50 transition-colors"
+                                                className="absolute top-2 right-2 p-1 bg-white dark:bg-slate-800 rounded-full shadow-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
                                             >
                                                 <X size={16} />
                                             </button>
                                         </>
                                     ) : (
                                         <>
-                                            <Upload size={24} className="text-slate-400 mb-2" />
-                                            <span className="text-xs font-bold text-slate-500">Tap to Upload</span>
+                                            <Upload size={24} className="text-slate-400" />
+                                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Tap to Upload</span>
                                         </>
                                     )}
                                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -452,12 +454,12 @@ export default function NotifyRescuer() {
                                         value={selectedRescuer}
                                         onChange={handleRescuerChange}
                                         required
-                                        className="w-full h-28 p-4 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700 outline-none focus:ring-2 focus:ring-orange-400 transition-all appearance-none resize-none pt-4 align-top focus:bg-white"
+                                        className="w-full h-28 p-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-400 transition-all appearance-none resize-none pt-4 align-top focus:bg-white dark:focus:bg-slate-600"
                                         size={4}
                                     >
                                         <option value="" disabled className="text-slate-400 pb-2">Select a rescuer...</option>
                                         {rescuers.map(r => (
-                                            <option key={r.id} value={r.id} className="py-2 px-2 rounded-lg hover:bg-orange-50 cursor-pointer">
+                                            <option key={r.id} value={r.id} className="py-2 px-2 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 cursor-pointer">
                                                 {r.full_name || 'Agencies'} ({r.location || 'All Areas'})
                                             </option>
                                         ))}
@@ -478,7 +480,7 @@ export default function NotifyRescuer() {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 required
-                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700 outline-none focus:ring-2 focus:ring-orange-400 transition-all placeholder:text-slate-400 resize-none focus:bg-white"
+                                className="w-full p-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-400 transition-all placeholder:text-slate-400 resize-none focus:bg-white dark:focus:bg-slate-600"
                             />
                         </div>
 

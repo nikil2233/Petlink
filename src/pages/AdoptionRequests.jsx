@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Check, X, Clock, ChevronDown, ChevronUp, User, MapPin } from 'lucide-react';
+import { 
+  FileText, Check, X, Clock, ChevronDown, ChevronUp, 
+  User, MapPin, Calendar, MessageCircle, Shield, AlertCircle 
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdoptionRequests() {
   const [requests, setRequests] = useState([]);
@@ -21,10 +25,6 @@ export default function AdoptionRequests() {
         return;
       }
 
-      // Fetch requests for pets posted by the current user
-      // We need to join with adoptions to filter by posted_by = user.id
-      // Supabase join syntax: adoption_requests(..., adoptions!inner(...))
-      
       const { data, error } = await supabase
         .from('adoption_requests')
         .select(`
@@ -60,7 +60,8 @@ export default function AdoptionRequests() {
   const [meetingTime, setMeetingTime] = useState('');
   const [instructions, setInstructions] = useState('');
 
-  const handleApproveClick = (request) => {
+  const handleApproveClick = (request, e) => {
+      e.stopPropagation();
       setProcessingRequest(request);
       // Default tomorrow 10am
       const tmr = new Date();
@@ -93,28 +94,22 @@ export default function AdoptionRequests() {
         if (updateError) throw updateError;
         
         // 2. Mark Pet as Adopted
-        // This hides it from the main feed (if filtered correctly)
         const { error: adoptionError } = await supabase
             .from('adoptions')
             .update({ status: 'adopted' })
             .eq('id', processingRequest.adoptions.id);
 
-        if (adoptionError) { 
-             console.error("Error updating adoption status", adoptionError);
-             // Verify if we want to throw or just log? Let's log but continue notification.
-        }
+        if (adoptionError) console.error("Error updating adoption status", adoptionError);
 
         // 3. Notify User
-        const { error: notifyError } = await supabase
+        await supabase
             .from('notifications')
             .insert([{
                 user_id: processingRequest.requester_id,
                 type: 'adoption_update',
-                message: `Congratulations! Your adoption application for ${processingRequest.adoptions.name} has been APPROVED! Meeting scheduled for ${meetingDate} at ${meetingTime}.`,
+                message: `Congratulations! Your adoption application for ${processingRequest.adoptions.name} has been APPROVED! Meeting scheduled for ${meetingDate} at ${meetingTime}. Details: ${instructions}`,
                 metadata: { request_id: requestId }
             }]);
-        
-        if (notifyError) console.error("Notify Error", notifyError);
         
         // Update local state
         setRequests(requests.map(r => 
@@ -122,7 +117,7 @@ export default function AdoptionRequests() {
         ));
         
         setProcessingRequest(null);
-        alert("Application approved and applicant notified!");
+        // Optional: show a toast instead of alert
 
     } catch (error) {
         console.error('Error updating status:', error);
@@ -130,8 +125,8 @@ export default function AdoptionRequests() {
     }
   };
 
-  // Reject logic remains simple
-  const handleReject = async (requestId) => {
+  const handleReject = async (requestId, e) => {
+      e.stopPropagation();
       if(!window.confirm("Are you sure you want to reject this application?")) return;
       try {
           const { error } = await supabase
@@ -148,202 +143,275 @@ export default function AdoptionRequests() {
       }
   };
 
-  if (loading) return <div className="page-container text-center py-20">Loading requests...</div>;
+  if (loading) return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-32 pb-12 flex justify-center transition-colors duration-300">
+          <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
+      </div>
+  );
 
   return (
-    <div className="page-container relative">
-      <h1 className="mb-8">Adoption Applications</h1>
-
-      {/* Scheduling Modal */}
-      {processingRequest && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl animate-fade-in">
-                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                      <Clock className="text-primary" /> Schedule Adoption Meeting
-                  </h3>
-                  <p className="text-muted mb-6">
-                      Great news! You are approving <strong>{processingRequest.profiles?.full_name}</strong> to adopt <strong>{processingRequest.adoptions.name}</strong>.
-                      <br/>
-                      Please set a meeting time for them to pick up the pet or visit.
-                  </p>
-                  
-                  <div className="space-y-4 mb-8">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold mb-1">Date</label>
-                            <input 
-                                type="date" 
-                                className="form-input w-full"
-                                value={meetingDate}
-                                onChange={e => setMeetingDate(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold mb-1">Time</label>
-                            <input 
-                                type="time" 
-                                className="form-input w-full"
-                                value={meetingTime}
-                                onChange={e => setMeetingTime(e.target.value)}
-                            />
-                        </div>
-                      </div>
-                      
-                      <div>
-                          <label className="block text-sm font-semibold mb-1">Instructions / Message</label>
-                          <textarea 
-                              className="form-textarea w-full"
-                              rows="3"
-                              value={instructions}
-                              onChange={e => setInstructions(e.target.value)}
-                              placeholder="e.g. Please bring your ID, a leash, and the adoption fee..."
-                          />
-                      </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3">
-                      <button 
-                          onClick={() => setProcessingRequest(null)}
-                          className="btn bg-slate-100 hover:bg-slate-200 text-slate-700"
-                      >
-                          Cancel
-                      </button>
-                      <button 
-                          onClick={confirmApproval}
-                          className="btn btn-primary"
-                      >
-                          Confirm Approval & Notify
-                      </button>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      {requests.length === 0 ? (
-        <div className="glass-panel text-center py-16">
-            <FileText size={48} className="mx-auto mb-4 text-muted" />
-            <h3>No Applications Yet</h3>
-            <p className="text-muted">When users apply to adopt your pets, they will appear here.</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-28 pb-20 px-4 transition-colors duration-300">
+      <div className="max-w-4xl mx-auto">
+        
+        {/* Header */}
+        <div className="mb-10 text-center md:text-left">
+            <h1 className="text-4xl font-black text-slate-800 dark:text-white mb-3 tracking-tight">Adoption Requests</h1>
+            <p className="text-lg text-slate-500 dark:text-slate-400 font-medium">Manage and review applications for your foster pets.</p>
         </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-            {requests.map(req => (
-                <div key={req.id} className="glass-panel p-0 overflow-hidden transition-all">
-                    {/* Header Row */}
-                    <div 
-                        className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50"
-                        onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
+
+        {/* Scheduling Modal */}
+        <AnimatePresence>
+            {processingRequest && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="bg-white dark:bg-slate-800 rounded-[2rem] max-w-lg w-full p-8 shadow-2xl relative overflow-hidden transition-colors duration-300"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-slate-200 rounded-lg overflow-hidden shrink-0">
-                                {req.adoptions.image_url ? (
-                                    <img src={req.adoptions.image_url} className="w-full h-full object-cover" alt="Pet" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted">PET</div>
-                                )}
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+                        
+                        <h3 className="text-2xl font-black mb-2 flex items-center gap-3 text-slate-800 dark:text-white">
+                            <Clock className="text-emerald-500" /> Schedule Meeting
+                        </h3>
+                        <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+                            You are approving <strong>{processingRequest.profiles?.full_name}</strong> to adopt <strong>{processingRequest.adoptions.name}</strong>.
+                            Set a time for the final handover or meet-and-greet.
+                        </p>
+                        
+                        <div className="space-y-6 mb-8">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Date</label>
+                                    <input 
+                                        type="date" 
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                        value={meetingDate}
+                                        onChange={e => setMeetingDate(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Time</label>
+                                    <input 
+                                        type="time" 
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                        value={meetingTime}
+                                        onChange={e => setMeetingTime(e.target.value)}
+                                    />
+                                </div>
                             </div>
+                            
                             <div>
-                                <h3 className="text-lg font-bold m-0">{req.adoptions.name}</h3>
-                                <p className="text-sm text-muted m-0">Applicant: {req.profiles?.full_name || 'Unknown'}</p>
+                                <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Instructions</label>
+                                <textarea 
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-600 dark:text-slate-300 font-medium outline-none focus:ring-2 focus:ring-emerald-500 transition-all resize-none"
+                                    rows="3"
+                                    value={instructions}
+                                    onChange={e => setInstructions(e.target.value)}
+                                    placeholder="e.g. Please bring a cat carrier and your ID..."
+                                />
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                             <div className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                                req.status === 'pending' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                                req.status === 'approved' ? 'bg-green-100 text-green-700 border-green-200' :
-                                'bg-red-100 text-red-700 border-red-200'
-                            }`}>
-                                {req.status === 'approved' ? 'SCHEDULED' : req.status.toUpperCase()}
-                            </div>
-                            {expandedId === req.id ? <ChevronUp size={20} className="text-muted" /> : <ChevronDown size={20} className="text-muted" />}
+                        <div className="flex gap-4">
+                            <button 
+                                onClick={() => setProcessingRequest(null)}
+                                className="flex-1 py-4 rounded-xl text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={confirmApproval}
+                                className="flex-[2] py-4 rounded-xl bg-slate-900 dark:bg-emerald-600 text-white font-bold hover:bg-slate-800 dark:hover:bg-emerald-700 transition-all shadow-lg shadow-slate-200 dark:shadow-none"
+                            >
+                                Confirm & Notify
+                            </button>
                         </div>
-                    </div>
-
-                    {/* Expanded Details */}
-                    {expandedId === req.id && (
-                        <div className="p-6 border-t border-border bg-subtle/30 animate-fade-in">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div>
-                                    <h4 className="flex items-center gap-2 mb-4 text-primary"><User size={18} /> Applicant Details</h4>
-                                    <div className="space-y-3 text-sm">
-                                        <div className="flex justify-between border-b border-border/50 pb-2">
-                                            <span className="text-muted">Full Name</span>
-                                            <span className="font-semibold">{req.profiles?.full_name}</span>
-                                        </div>
-                                        <div className="flex justify-between border-b border-border/50 pb-2">
-                                            <span className="text-muted">Email</span>
-                                            <span className="font-semibold">{req.profiles?.email}</span>
-                                        </div>
-                                        <div className="flex justify-between border-b border-border/50 pb-2">
-                                            <span className="text-muted">Phone</span>
-                                            <span className="font-semibold">{req.phone}</span>
-                                        </div>
-                                        <div className="flex justify-between border-b border-border/50 pb-2">
-                                            <span className="text-muted">Location</span>
-                                            <span className="font-semibold">{req.address}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <h4 className="flex items-center gap-2 mb-4 text-primary"><FileText size={18} /> Application Answers</h4>
-                                    <div className="space-y-4 text-sm">
-                                        <div>
-                                            <p className="text-muted mb-1 text-xs uppercase tracking-wider font-bold">Living Situation</p>
-                                            <p className="font-medium bg-white p-2 rounded border border-border">{req.living_situation}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-muted mb-1 text-xs uppercase tracking-wider font-bold">Experience / Pets</p>
-                                            <p className="font-medium bg-white p-2 rounded border border-border">
-                                                {req.has_other_pets ? 'Has other pets. ' : 'No other pets. '} 
-                                                {req.experience}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-muted mb-1 text-xs uppercase tracking-wider font-bold">Message</p>
-                                            <p className="font-medium bg-white p-2 rounded border border-border italic">"{req.message}"</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Show Scheduled Info if Approved */}
-                            {req.status === 'approved' && req.meeting_datetime && (
-                                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                    <h4 className="text-green-800 flex items-center gap-2 mb-2">
-                                        <Check size={18} /> Meeting Scheduled
-                                    </h4>
-                                    <p className="text-green-700 text-sm">
-                                        <strong>When:</strong> {new Date(req.meeting_datetime).toLocaleString()}
-                                        <br/>
-                                        <strong>Instructions:</strong> {req.meeting_instructions || 'None'}
-                                    </p>
-                                </div>
-                            )}
-
-                            {req.status === 'pending' && (
-                                <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-border">
-                                    <button 
-                                        onClick={() => handleReject(req.id)}
-                                        className="btn bg-white border border-danger text-danger hover:bg-red-50"
-                                    >
-                                        <X size={18} /> Reject
-                                    </button>
-                                    <button 
-                                        onClick={() => handleApproveClick(req)}
-                                        className="btn btn-primary"
-                                    >
-                                        <Check size={18} /> Approve Application
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    </motion.div>
                 </div>
-            ))}
-        </div>
-      )}
+            )}
+        </AnimatePresence>
+
+        {requests.length === 0 ? (
+            <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-12 text-center shadow-sm border border-slate-100 dark:border-slate-700 transition-colors duration-300">
+                <div className="w-20 h-20 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300 dark:text-slate-500">
+                    <FileText size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-700 dark:text-white mb-2">No Applications Yet</h3>
+                <p className="text-slate-500 dark:text-slate-400">Wait for potential adopters to submit their applications.</p>
+            </div>
+        ) : (
+            <div className="flex flex-col gap-6">
+                {requests.map((req, index) => (
+                    <motion.div 
+                        key={req.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className={`bg-white dark:bg-slate-800 rounded-[2rem] overflow-hidden transition-all duration-300 border border-slate-100 dark:border-slate-700 ${expandedId === req.id ? 'shadow-2xl ring-1 ring-slate-100 dark:ring-slate-700' : 'shadow-sm hover:shadow-md'}`}
+                    >
+                        {/* Summary Header */}
+                        <div 
+                            className="p-6 md:p-8 cursor-pointer flex flex-col md:flex-row items-start md:items-center gap-6"
+                            onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
+                        >
+                            {/* Pet Info */}
+                            <div className="flex items-center gap-5 flex-1">
+                                <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-100 dark:bg-slate-700 rounded-2xl overflow-hidden shadow-inner shrink-0 relative">
+                                    {req.adoptions.image_url ? (
+                                        <img src={req.adoptions.image_url} className="w-full h-full object-cover" alt="Pet" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-500"><FileText size={24}/></div>
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1">{req.adoptions.name}</h3>
+                                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                                        <User size={14} /> 
+                                        <span>Applicant: <span className="text-slate-700 dark:text-slate-300">{req.profiles?.full_name || 'Unknown'}</span></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Status & Toggle */}
+                            <div className="flex items-center justify-between w-full md:w-auto gap-6 mt-4 md:mt-0">
+                                <StatusBadge status={req.status} />
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${expandedId === req.id ? 'bg-slate-100 dark:bg-slate-700 rotate-180' : 'bg-slate-50 dark:bg-slate-700/50'}`}>
+                                    <ChevronDown size={20} className="text-slate-400 dark:text-slate-500" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Expanded Content */}
+                        <AnimatePresence>
+                            {expandedId === req.id && (
+                                <motion.div 
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                >
+                                    <div className="bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700">
+                                    <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
+                                        
+                                        {/* Left Col: Applicant Info */}
+                                        <div className="space-y-6">
+                                            <h4 className="flex items-center gap-2 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                                <User size={16} /> Applicant Profile
+                                            </h4>
+                                            
+                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm space-y-4">
+                                                <InfoRow label="Full Name" value={req.profiles?.full_name} />
+                                                <InfoRow label="Email" value={req.profiles?.email} />
+                                                <InfoRow label="Phone" value={req.phone} />
+                                                <InfoRow label="Location" value={req.address} icon={<MapPin size={14} className="text-slate-400 dark:text-slate-500" />} />
+                                            </div>
+                                        </div>
+
+                                        {/* Right Col: Answers */}
+                                        <div className="space-y-6">
+                                            <h4 className="flex items-center gap-2 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                                <FileText size={16} /> Application Details
+                                            </h4>
+                                            
+                                            <div className="space-y-4">
+                                                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Living Situation</p>
+                                                    <p className="font-semibold text-slate-700 dark:text-slate-200">{req.living_situation}</p>
+                                                </div>
+                                                
+                                                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Experience & Pets</p>
+                                                    <div className="flex items-start gap-2">
+                                                        {req.has_other_pets && (
+                                                            <div className="mt-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 p-1 rounded-md shrink-0" title="Has other pets">
+                                                                <AlertCircle size={14} />
+                                                            </div>
+                                                        )}
+                                                        <p className="font-semibold text-slate-700 dark:text-slate-200 leading-relaxed">
+                                                            {req.experience || "No details provided."}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                                                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                                                    <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                        <MessageCircle size={12} /> Message
+                                                    </p>
+                                                    <p className="font-medium text-slate-600 dark:text-slate-300 italic leading-relaxed">"{req.message}"</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Bar */}
+                                    <div className="p-6 md:p-8 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white">
+                                        {req.status === 'pending' ? (
+                                            <div className="flex flex-col md:flex-row gap-4 justify-end">
+                                                <button 
+                                                    onClick={(e) => handleReject(req.id, e)}
+                                                    className="px-8 py-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 hover:border-red-100 dark:hover:border-red-900/30 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <X size={18} /> Reject
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => handleApproveClick(req, e)}
+                                                    className="px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow-lg shadow-emerald-200 dark:shadow-none hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <Check size={18} /> Approve Application
+                                                </button>
+                                            </div>
+                                        ) : req.status === 'approved' ? (
+                                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl p-4 flex items-start gap-3">
+                                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-full text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                    <Check size={20} />
+                                                </div>
+                                                <div>
+                                                    <h5 className="font-bold text-emerald-900 dark:text-emerald-400">Application Approved</h5>
+                                                    <p className="text-sm text-emerald-700 dark:text-emerald-500 mt-1">
+                                                        Meeting scheduled for <strong>{new Date(req.meeting_datetime).toLocaleDateString()}</strong> at <strong>{new Date(req.meeting_datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</strong>.
+                                                    </p>
+                                                    <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-2 uppercase tracking-wide font-bold">Instructions: {req.meeting_instructions}</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-xl p-4 flex items-center gap-3 text-red-700 dark:text-red-400 font-bold opacity-75">
+                                                <X size={20} /> Application Rejected
+                                            </div>
+                                        )}
+                                    </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
+                ))}
+            </div>
+        )}
+      </div>
     </div>
   );
 }
+
+// Helpers
+const StatusBadge = ({ status }) => {
+    const configs = {
+        pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', label: 'Pending Review', icon: <Clock size={12} /> },
+        approved: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', label: 'Approved', icon: <Check size={12} /> },
+        rejected: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', label: 'Rejected', icon: <X size={12} /> },
+    };
+    const config = configs[status] || configs.pending;
+
+    return (
+        <div className={`px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider flex items-center gap-2 ${config.bg} ${config.text}`}>
+            {config.icon} {config.label}
+        </div>
+    );
+};
+
+const InfoRow = ({ label, value, icon }) => (
+    <div className="flex justify-between items-center group">
+        <span className="text-slate-400 dark:text-slate-500 font-medium text-sm flex items-center gap-2">{icon} {label}</span>
+        <span className="font-bold text-slate-700 dark:text-slate-300 text-sm group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{value || 'N/A'}</span>
+    </div>
+);

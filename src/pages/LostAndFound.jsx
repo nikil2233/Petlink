@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 import { useAuth } from '../context/AuthContext';
+import { motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 
 
@@ -566,12 +567,12 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
   };
 
   // --- STYLES ---
+  // Replaced with specific tailwind classes in render to support dark mode better, 
+  // or simple conditional object:
+  // but let's keep it for now and add dark mode via class if possible? 
+  // Easier to replace specific usage sites with Tailwind classes.
   const glassCardStyle = {
-    background: 'rgba(255, 255, 255, 0.85)',
-    backdropFilter: 'blur(12px)',
-    borderRadius: '1.5rem',
-    border: '1px solid rgba(255, 255, 255, 0.6)',
-    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
+    // backdropFilter is handled by class, this is just fallback or specific overrides
   };
 
   const inputFieldStyles = `
@@ -585,6 +586,11 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
         outline: none;
         transition: all 0.2s;
         color: #1e293b;
+    }
+    :is(.dark) .input-field {
+        background: rgba(15, 23, 42, 0.6);
+        border-color: #334155;
+        color: #f8fafc;
     }
     .input-field:focus {
         background: white;
@@ -601,19 +607,19 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
   ];
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 pt-24 pb-12 px-4 relative">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 pt-24 pb-12 px-4 relative transition-colors duration-300">
       
       {/* HEADER TABS - FIXED */}
        <div className="max-w-6xl mx-auto mb-8">
-            <div className="flex p-1 bg-white rounded-2xl shadow-sm border border-slate-200 w-fit mx-auto md:mx-0">
+            <div className="flex p-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 w-fit mx-auto md:mx-0">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
                             activeTab === tab.id 
-                            ? 'bg-slate-900 text-white shadow-md' 
-                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                            ? 'bg-slate-900 text-white shadow-md dark:bg-slate-700' 
+                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white'
                         }`}
                     >
                         {tab.icon} {tab.label}
@@ -625,7 +631,7 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
       {/* PET DETAIL MODAL */}
       {selectedPet && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
-            <div className="bg-white rounded-3xl overflow-hidden max-w-4xl w-full shadow-2xl relative my-8" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden max-w-4xl w-full shadow-2xl relative my-8 border dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
                 <button onClick={closePetDetail} className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-lg transition-colors">
                     <X size={20} />
                 </button>
@@ -646,24 +652,24 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                     </div>
 
                     {/* Right: Info */}
-                    <div className="md:w-1/2 p-8 overflow-y-auto max-h-[80vh]">
+                    <div className="md:w-1/2 p-8 overflow-y-auto max-h-[80vh] dark:text-slate-200">
                         <div className="mb-6">
-                            <h2 className="text-4xl font-black text-slate-800 mb-2">{selectedPet.pet_name}</h2>
-                            <p className="text-lg font-bold text-slate-500">{selectedPet.breed} • {selectedPet.gender} • {selectedPet.age || 'Unknown Age'}</p>
+                            <h2 className="text-4xl font-black text-slate-800 dark:text-white mb-2">{selectedPet.pet_name}</h2>
+                            <p className="text-lg font-bold text-slate-500 dark:text-slate-400">{selectedPet.breed} • {selectedPet.gender} • {selectedPet.age || 'Unknown Age'}</p>
                             <div className="flex flex-wrap gap-2 mt-3">
-                                <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide">Color: {selectedPet.primary_color}</span>
-                                <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide">Size: {selectedPet.size}</span>
-                                <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide">{selectedPet.coat_type} Coat</span>
+                                <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide">Color: {selectedPet.primary_color}</span>
+                                <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide">Size: {selectedPet.size}</span>
+                                <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide">{selectedPet.coat_type} Coat</span>
                             </div>
                         </div>
 
                         <div className="space-y-6">
                             {/* Location */}
-                            <div className="bg-red-50 p-4 rounded-xl border border-red-100">
-                                <h3 className="text-xs font-black text-red-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                            <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-900/30">
+                                <h3 className="text-xs font-black text-red-500 dark:text-red-400 uppercase tracking-widest mb-2 flex items-center gap-1">
                                     <MapPin size={14} /> Last Seen
                                 </h3>
-                                <p className="font-bold text-slate-800 text-lg mb-1">{selectedPet.last_seen_location}</p>
+                                <p className="font-bold text-slate-800 dark:text-white text-lg mb-1">{selectedPet.last_seen_location}</p>
                                 <div className="flex gap-4 text-sm text-slate-500">
                                     <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(selectedPet.last_seen_date).toLocaleDateString()}</span>
                                     <span className="flex items-center gap-1"><Clock size={14} /> {selectedPet.last_seen_time || 'Time Unknown'}</span>
@@ -820,20 +826,20 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
       {/* SUCCESS MODAL OVERLAY */}
       {showSuccessModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-              <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl transform scale-100 transition-all text-center">
-                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 shadow-sm">
+              <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-lg w-full shadow-2xl transform scale-100 transition-all text-center border dark:border-slate-700">
+                  <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 dark:text-green-400 shadow-sm">
                       <CheckCircle size={40} />
                   </div>
-                  <h2 className="text-3xl font-black text-slate-800 mb-2">Report Broadcasted!</h2>
-                  <p className="text-slate-500 mb-8 text-lg">
+                  <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-2">Report Broadcasted!</h2>
+                  <p className="text-slate-500 dark:text-slate-400 mb-8 text-lg">
                       Your alert has been sent to all nearby users, rescuers, and vet clinics.
                   </p>
                   
-                  <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mb-8">
-                      <h3 className="font-bold text-blue-900 mb-2 flex items-center justify-center gap-2">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl border border-blue-100 dark:border-blue-900/30 mb-8">
+                      <h3 className="font-bold text-blue-900 dark:text-blue-200 mb-2 flex items-center justify-center gap-2">
                           <FileText size={20} /> Generate Missing Poster?
                       </h3>
-                      <p className="text-blue-700/80 text-sm mb-0">
+                      <p className="text-blue-700/80 dark:text-blue-300/80 text-sm mb-0">
                           We can instantly create a printable PDF flyer for you to share physically.
                       </p>
                   </div>
@@ -859,38 +865,38 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
       {/* Pickup Schedule Modal */}
       {showPickupModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-              <div className="bg-white rounded-3xl overflow-hidden max-w-md w-full shadow-2xl relative p-8">
+              <div className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden max-w-md w-full shadow-2xl relative p-8 border dark:border-slate-700">
                   <div className="text-center mb-6">
-                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
+                      <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600 dark:text-emerald-400">
                            <Truck size={32} />
                       </div>
-                      <h2 className="text-2xl font-black text-slate-800">Schedule Pickup</h2>
-                      <p className="text-slate-500 mt-2">When will you pick up this pet?</p>
+                      <h2 className="text-2xl font-black text-slate-800 dark:text-white">Schedule Pickup</h2>
+                      <p className="text-slate-500 dark:text-slate-400 mt-2">When will you pick up this pet?</p>
                   </div>
 
                   <div className="space-y-4 mb-8">
                       <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Date</label>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Date</label>
                           <input 
                               type="date" 
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-700 outline-none focus:border-emerald-500 transition-colors"
+                              className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 font-bold text-slate-700 dark:text-white outline-none focus:border-emerald-500 transition-colors"
                               value={pickupDate}
                               onChange={(e) => setPickupDate(e.target.value)}
                           />
                       </div>
                       <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Time</label>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Time</label>
                           <input 
                               type="time" 
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-700 outline-none focus:border-emerald-500 transition-colors"
+                              className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 font-bold text-slate-700 dark:text-white outline-none focus:border-emerald-500 transition-colors"
                               value={pickupTime}
                               onChange={(e) => setPickupTime(e.target.value)}
                           />
                       </div>
                        <div>
-                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Note for Finder (Optional)</label>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Note for Finder (Optional)</label>
                           <textarea 
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-medium text-slate-600 outline-none focus:border-emerald-500 transition-colors resize-none h-20"
+                              className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 font-medium text-slate-600 dark:text-slate-300 outline-none focus:border-emerald-500 transition-colors resize-none h-20"
                               placeholder="e.g. I'll be in a marked van..."
                               value={pickupNote}
                               onChange={(e) => setPickupNote(e.target.value)}
@@ -920,26 +926,26 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
           
         {/* Header */}
         <div className="text-center mb-10">
-            <h1 className="text-4xl md:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-orange-600">
+            <h1 className="text-4xl md:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-orange-600 dark:from-red-400 dark:to-orange-400">
                 Lost & Found Network
             </h1>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
                 Rapid response network for missing pets. Report immediately to broadcast alerts to neighbors, rescuers, and local shelters.
             </p>
         </div>
 
         {/* Navigation Tabs */}
         <div className="flex justify-center mb-10">
-            <div className="bg-white p-1.5 rounded-full shadow-md inline-flex border border-slate-100">
+            <div className="bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-md inline-flex border border-slate-100 dark:border-slate-700">
                 <button 
                     onClick={() => setActiveTab('alerts')}
-                    className={`px-8 py-3 rounded-full font-bold transition-all text-sm flex items-center gap-2 ${activeTab === 'alerts' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
+                    className={`px-8 py-3 rounded-full font-bold transition-all text-sm flex items-center gap-2 ${activeTab === 'alerts' ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-lg' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                 >
                     <AlertTriangle size={18} /> Active Feed
                 </button>
                 <button 
                     onClick={() => setActiveTab('report')}
-                    className={`px-8 py-3 rounded-full font-bold transition-all text-sm flex items-center gap-2 ${activeTab === 'report' ? 'bg-red-600 text-white shadow-lg shadow-red-200' : 'text-slate-500 hover:text-red-600 hover:bg-red-50'}`}
+                    className={`px-8 py-3 rounded-full font-bold transition-all text-sm flex items-center gap-2 ${activeTab === 'report' ? 'bg-red-600 text-white shadow-lg shadow-red-200 dark:shadow-red-900/20' : 'text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
                 >
                     <FileText size={18} /> File a Report
                 </button>
@@ -958,8 +964,8 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                 {lostPets.map(pet => (
                     <div 
                         key={pet.id} 
-                        style={glassCardStyle} 
-                        className="group overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+                        // Modified to remove inline glassCardStyle to allow Tailwind classes to control dark mode
+                        className="group overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer bg-white/85 dark:bg-slate-800/85 backdrop-blur-md rounded-[1.5rem] border border-white/60 dark:border-slate-700 shadow-sm"
                         onClick={() => openPetDetail(pet)}
                     >
                         <div className="relative h-64 bg-slate-200">
@@ -988,23 +994,23 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                             </div>
                         </div>
                         <div className="p-6">
-                            <h3 className="text-2xl font-bold text-slate-800 mb-1">{pet.pet_name}</h3>
-                            <p className="text-sm font-medium text-slate-500 mb-4">{pet.breed} • {pet.gender} • {pet.size}</p>
+                            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">{pet.pet_name}</h3>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">{pet.breed} • {pet.gender} • {pet.size}</p>
                             
                             <div className="space-y-3 mb-6">
                                 <div className="flex items-start gap-3">
                                     <MapPin size={18} className="text-red-500 mt-0.5 shrink-0" />
                                     <div>
-                                        <p className="text-sm font-bold text-slate-700">Last Seen</p>
-                                        <p className="text-sm text-slate-500 line-clamp-1">{pet.last_seen_location}</p>
-                                        <p className="text-xs text-slate-400 mt-0.5">{new Date(pet.last_seen_date).toLocaleDateString()}</p>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Last Seen</p>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">{pet.last_seen_location}</p>
+                                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{new Date(pet.last_seen_date).toLocaleDateString()}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3">
                                     <Eye size={18} className="text-blue-500 mt-0.5 shrink-0" />
                                     <div>
-                                        <p className="text-sm font-bold text-slate-700">Distinguishing Features</p>
-                                        <p className="text-sm text-slate-500 line-clamp-2">{pet.distinctive_features || pet.description || "Click for details"}</p>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Distinguishing Features</p>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{pet.distinctive_features || pet.description || "Click for details"}</p>
                                     </div>
                                 </div>
 
@@ -1037,7 +1043,7 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                 )}
                             </div>
 
-                            <button className="w-full py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 group-hover:bg-slate-900 group-hover:text-white">
+                            <button className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-2 group-hover:bg-slate-900 group-hover:text-white">
                                 View Details
                             </button>
                         </div>
@@ -1399,7 +1405,7 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
       {showClaimModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowClaimModal(false)} />
-            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+            <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh] border dark:border-slate-700">
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-700 p-6 text-center shrink-0">
                     <h3 className="text-xl font-black text-white mb-1">Claim This Pet</h3>
                     <p className="text-indigo-100 text-xs">Help the finder verify you are the real owner.</p>
@@ -1408,27 +1414,27 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                 <div className="p-6 overflow-y-auto custom-scrollbar">
                     <div className="space-y-4">
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Your Name</label>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Your Name</label>
                             <input 
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white"
                                 value={claimName}
                                 onChange={e => setClaimName(e.target.value)}
                                 placeholder="Full Name"
                             />
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Contact Info</label>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Contact Info</label>
                             <input 
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white"
                                 value={claimContact}
                                 onChange={e => setClaimContact(e.target.value)}
                                 placeholder="Phone number or Email"
                             />
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Proof Details <span className="text-red-500">*</span></label>
+                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Proof Details <span className="text-red-500">*</span></label>
                             <textarea 
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px] resize-none"
+                                className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px] resize-none text-slate-800 dark:text-white"
                                 value={claimProof}
                                 onChange={e => setClaimProof(e.target.value)}
                                 placeholder="Describe unique markings, collar, nicknames, or behavior..."
@@ -1481,26 +1487,26 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     {/* Simple CSS Confetti (or placeholder for effect) */}
                </div>
-               <div className="bg-white rounded-[2rem] p-10 max-w-md w-full shadow-2xl text-center relative overflow-hidden">
+               <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-10 max-w-md w-full shadow-2xl text-center relative overflow-hidden border dark:border-slate-700">
                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-400 via-amber-400 to-emerald-400"></div>
                    
                    <motion.div 
                         initial={{ scale: 0 }}
                         animate={{ scale: 1, rotate: 360 }}
                         transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                        className="w-24 h-24 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500 shadow-inner"
+                        className="w-24 h-24 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500 dark:text-rose-400 shadow-inner"
                     >
                        <Heart size={48} fill="currentColor" />
                    </motion.div>
                    
-                   <h2 className="text-4xl font-black text-slate-800 mb-2">Hooray!</h2>
-                   <p className="text-lg text-slate-500 mb-8 font-medium">
+                   <h2 className="text-4xl font-black text-slate-800 dark:text-white mb-2">Hooray!</h2>
+                   <p className="text-lg text-slate-500 dark:text-slate-400 mb-8 font-medium">
                        Another tail wagging happily. Thank you for being a hero! 
                    </p>
                    
                    <button 
                         onClick={() => { setShowHoorayModal(false); setActiveTab('reunited'); }}
-                        className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition-all shadow-lg hover:translate-y-[-2px]"
+                        className="w-full bg-slate-900 dark:bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-600 transition-all shadow-lg hover:translate-y-[-2px]"
                     >
                        See Reunited Pets
                    </button>
@@ -1514,8 +1520,8 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
 
 // Helpers
 const Section = ({ title, children }) => (
-    <div className="bg-white/60 backdrop-blur-sm p-6 rounded-2xl border border-white/80 shadow-sm">
-        <h3 className="text-lg font-black text-slate-800 mb-6 uppercase tracking-wide border-b border-slate-100 pb-2">{title}</h3>
+    <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm p-6 rounded-2xl border border-white/80 dark:border-slate-700 shadow-sm">
+        <h3 className="text-lg font-black text-slate-800 dark:text-white mb-6 uppercase tracking-wide border-b border-slate-100 dark:border-slate-700 pb-2">{title}</h3>
         {children}
     </div>
 );
@@ -1523,8 +1529,8 @@ const Section = ({ title, children }) => (
 const InputGroup = ({ label, info, children }) => (
     <div>
         <div className="flex justify-between items-end mb-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{label}</label>
-            {info && <span className="text-[10px] text-slate-400 font-medium">{info}</span>}
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</label>
+            {info && <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{info}</span>}
         </div>
         {children}
     </div>

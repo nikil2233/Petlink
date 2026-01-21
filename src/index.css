@@ -58,6 +58,49 @@
   --header-height: 4.5rem;
 }
 
+[data-theme="dark"] {
+  /* Brand Colors - Adjusted for Dark Mode */
+  --primary: #fbbf24; /* Amber-400: Brighter for dark bg */
+  --primary-hover: #f59e0b; /* Amber-500 */
+  --primary-light: #451a03; /* Amber-950 */
+
+  --secondary: #2dd4bf; /* Teal-400 */
+  --secondary-hover: #14b8a6; /* Teal-500 */
+  --secondary-light: #042f2e; /* Teal-950 */
+
+  --accent: #fb7185; /* Rose-400 */
+  --accent-hover: #f43f5e; /* Rose-500 */
+
+  /* Functional Colors */
+  --success: #34d399; /* Emerald-400 */
+  --warning: #fbbf24; /* Amber-400 */
+  --danger: #f87171; /* Red-400 */
+  --info: #60a5fa; /* Blue-400 */
+
+  /* Backgrounds */
+  --bg-main: #0f172a; /* Slate-900 */
+  --bg-card: #1e293b; /* Slate-800 */
+  --bg-subtle: #334155; /* Slate-700 */
+  --bg-input: #1e293b; /* Slate-800 */
+  --glass-bg: rgba(30, 41, 59, 0.7); /* Slate-800 with opacity */
+  --glass-border: rgba(255, 255, 255, 0.1);
+
+  /* Typography */
+  --text-main: #f8fafc; /* Slate-50 */
+  --text-muted: #94a3b8; /* Slate-400 */
+  --text-light: #64748b; /* Slate-500 */
+
+  /* Borders & Shadows */
+  --border-color: #334155; /* Slate-700 */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5),
+    0 2px 4px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5),
+    0 4px 6px -4px rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5),
+    0 10px 10px -5px rgb(0 0 0 / 0.5);
+}
+
 /* =========================================
      2. Global Reset & Base Styles
      ========================================= */
@@ -65,6 +108,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease; /* Smooth theming */
 }
 
 body {
@@ -74,26 +118,44 @@ body {
   line-height: 1.6;
   min-height: 100vh;
 
-  /* Organic, "Happy" Background Gradient */
+  /* Organic, "Happy" Background Gradient - Light Mode */
   background-image: radial-gradient(
       circle at 0% 0%,
       rgba(255, 228, 230, 0.4) 0%,
       transparent 40%
     ),
-    /* Rose tint top-left */
-      radial-gradient(
+    radial-gradient(
         circle at 100% 0%,
         rgba(254, 243, 199, 0.4) 0%,
         transparent 40%
       ),
-    /* Amber tint top-right */
       radial-gradient(
         circle at 100% 100%,
         rgba(204, 251, 241, 0.4) 0%,
         transparent 40%
-      ); /* Teal tint bottom-right */
+      ); 
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
+}
+
+[data-theme="dark"] body {
+  /* Dark Mode specific gradient - more subtle, "night sky" feel */
+   background-image: radial-gradient(
+      circle at 0% 0%,
+      rgba(20, 184, 166, 0.1) 0%, /* Teal tint */
+      transparent 40%
+    ),
+    radial-gradient(
+        circle at 100% 0%,
+        rgba(245, 158, 11, 0.05) 0%, /* Amber tint */
+        transparent 40%
+      ),
+      radial-gradient(
+        circle at 50% 100%,
+        rgba(244, 63, 94, 0.1) 0%, /* Rose tint */
+        transparent 40%
+      ); 
+    background-color: var(--bg-main);
 }
 
 h1,
@@ -924,9 +986,83 @@ a:hover {
   }
 
   /* Mobile Responsive */
+
   @media (max-width: 1023px) {
       .auth-brand { display: none; }
       .auth-container { min-height: auto; }
       .auth-form-wrapper { padding: 2rem; }
   }
+
+
+  /* =========================================
+     7. Dark Mode Auth Overrides
+     ========================================= */
+  [data-theme="dark"] .auth-page {
+    background: var(--bg-main); 
+    background-image: radial-gradient(
+        circle at 0% 0%,
+        rgba(20, 184, 166, 0.1) 0%, 
+        transparent 40%
+      ),
+      radial-gradient(
+          circle at 100% 100%,
+          rgba(244, 63, 94, 0.1) 0%, 
+          transparent 40%
+        );
+  }
+
+  [data-theme="dark"] .auth-container {
+    background: rgba(30, 41, 59, 0.8); /* Slate-800 glass */
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  [data-theme="dark"] .auth-header h2 {
+    color: var(--text-main);
+  }
+
+  [data-theme="dark"] .auth-header p {
+    color: var(--text-muted);
+  }
+
+  [data-theme="dark"] .role-card {
+    background: var(--bg-subtle);
+    border-color: var(--border-color);
+    color: var(--text-muted);
+  }
+
+  [data-theme="dark"] .role-card:hover {
+    background: var(--bg-card);
+    border-color: var(--text-muted);
+  }
+
+  [data-theme="dark"] .role-card.active {
+    background: rgba(251, 191, 36, 0.1); /* Amber tint */
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  [data-theme="dark"] .modern-input {
+    background: var(--bg-subtle);
+    border-color: var(--border-color);
+    color: var(--text-main);
+  }
+
+  [data-theme="dark"] .modern-input:focus {
+    border-color: var(--primary);
+    background: var(--bg-card);
+  }
+
+  [data-theme="dark"] .input-with-icon .icon {
+    color: var(--text-muted);
+  }
+
+  [data-theme="dark"] .auth-footer {
+    border-top-color: var(--border-color);
+    color: var(--text-muted);
+  }
+
+  [data-theme="dark"] .auth-footer button {
+    color: var(--text-main);
+  }
+
 
