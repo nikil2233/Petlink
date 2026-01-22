@@ -1,181 +1,288 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 import { Link } from 'react-router-dom';
-import { Bell, Heart, Shield, ArrowRight, Activity, MapPin, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { PawPrint, Heart, Bell, Shield, MapPin, ArrowRight, Activity, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-export default function Home() {
+const Home = () => {
   const { user } = useAuth();
+  const [stats, setStats] = useState({
+    livesSaved: 0,
+    rescuers: 0,
+    adoptions: 0,
+    clinics: 0
+  });
+
+  const fadeIn = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  };
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // 1. Count Rescuers
+        const { count: rescuerCount } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'rescuer');
+
+        // 2. Count Clinics (Vets)
+        const { count: vetCount } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'vet');
+
+        // 3. Count Adoptions
+        const { count: adoptionCount } = await supabase
+          .from('adoptions')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'adopted');
+
+        // 4. Count Reunited Pets (for Lives Saved)
+        const { count: reunitedCount } = await supabase
+          .from('lost_pets')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'reunited');
+
+        // Lives Saved = Adoptions + Reunited
+        const totalAdoptions = adoptionCount || 0;
+        const totalReunited = reunitedCount || 0;
+        const totalLivesSaved = totalAdoptions + totalReunited;
+
+        setStats({
+          livesSaved: totalLivesSaved,
+          rescuers: rescuerCount || 0,
+          adoptions: totalAdoptions,
+          clinics: vetCount || 0
+        });
+
+      } catch (error) {
+        console.error('Error fetching home stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans pb-20 overflow-x-hidden transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
       
-      {/* HERO SECTION */}
-      <section className="relative pt-12 pb-20 px-6">
-        <div className="max-w-6xl mx-auto">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-                {/* Text Content */}
-                <motion.div 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="text-left"
-                >
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full text-xs font-bold uppercase tracking-wider mb-6 border border-rose-100 dark:border-rose-800">
-                        <Heart size={12} fill="currentColor" /> Welcome into the family
-                    </div>
-                    
-                    <h1 className="text-5xl md:text-7xl font-black text-slate-800 dark:text-white mb-6 leading-tight tracking-tight">
-                        Give Them a <br/>
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-amber-500">Home.</span>
-                    </h1>
-                    
-                    <p className="text-lg text-slate-500 dark:text-slate-400 mb-8 leading-relaxed max-w-md font-medium">
-                        Connect with rescuers, adopt loving pets, and find vet care in one beautiful place. Join the movement today.
-                    </p>
-
-                    <div className="flex flex-wrap items-center gap-4">
-                        <Link to="/notify" className="bg-rose-600 text-white px-[24px] py-[12px] rounded-[12px] font-bold text-sm shadow-lg shadow-rose-200 dark:shadow-rose-900/20 hover:bg-rose-700 transition-all flex items-center gap-2">
-                            <Bell size={18} /> Notify Rescuer
-                        </Link>
-                        <Link to="/adopt" className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-[24px] py-[12px] rounded-[12px] font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center gap-2">
-                            <Heart size={18} /> Adopt a Pet
-                        </Link>
-                    </div>
-
-                    <div className="mt-12 flex items-center gap-8">
-                        <div>
-                            <p className="text-3xl font-black text-slate-800 dark:text-white">200+</p>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Rescues</p>
-                        </div>
-                        <div className="w-px h-10 bg-slate-200 dark:bg-slate-700"></div>
-                        <div>
-                            <p className="text-3xl font-black text-slate-800 dark:text-white">50+</p>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Adoptions</p>
-                        </div>
-                        <div className="w-px h-10 bg-slate-200 dark:bg-slate-700"></div>
-                        <div>
-                            <p className="text-3xl font-black text-slate-800 dark:text-white">1k+</p>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Community</p>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Hero Image / Composition */}
-                <motion.div 
-                    initial={{ opacity: 0,  scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    className="relative hidden md:block"
-                >
-                    <div className="absolute inset-0 bg-gradient-to-tr from-rose-100 to-amber-100 dark:from-slate-800 dark:to-slate-900 rounded-[32px] transform rotate-3 scale-95 blur-2xl opacity-60"></div>
-                    <img 
-                        src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80" 
-                        alt="Happy Dog" 
-                        className="relative z-10 w-full rounded-[32px] shadow-2xl object-cover h-[500px] border-4 border-white dark:border-slate-800"
-                    />
-                    
-                    {/* Floating Badge */}
-                    <motion.div 
-                        animate={{ y: [0, -10, 0] }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute bottom-10 -left-10 z-20 bg-white dark:bg-slate-800 p-4 rounded-[20px] shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-4"
-                    >
-                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-full text-emerald-600 dark:text-emerald-400">
-                            <Shield size={24} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-bold text-slate-800 dark:text-white">Verified Vets</p>
-                            <p className="text-xs text-slate-400 font-medium">Trusted by thousands</p>
-                        </div>
-                    </motion.div>
-                </motion.div>
+      {/* 1. CLASSIC HERO SECTION */}
+      <section className="relative pt-20 pb-32 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          
+          {/* Text Content */}
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.6 }}
+            variants={fadeIn}
+            className="relative z-10"
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full text-sm font-bold uppercase tracking-wider mb-6">
+              <PawPrint size={16} /> Official Pet Registry
             </div>
+            <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 dark:text-white mb-6 leading-tight">
+              Give them a <span className="text-rose-600">Loving Home.</span>
+            </h1>
+            <p className="text-lg text-slate-600 dark:text-slate-400 mb-8 leading-relaxed max-w-lg">
+              The centralized platform for pet adoption, rescue coordination, and veterinary services. Join our community to make a difference.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Link to="/adopt" className="btn btn-primary px-8 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
+                Adopt a Pet
+              </Link>
+              <Link to="/notify" className="btn btn-secondary px-8 py-4 text-lg rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-rose-500 transition-all">
+                Report Stray
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Hero Image */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="relative z-10"
+          >
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800">
+               <img 
+                  src="https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=800&q=80" 
+                  alt="Happy Pets" 
+                  className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700" 
+               />
+            </div>
+            {/* Decimal Decorative Elements */}
+            <div className="absolute -z-10 top-10 -right-10 w-72 h-72 bg-amber-400/20 rounded-full blur-3xl"></div>
+            <div className="absolute -z-10 -bottom-10 -left-10 w-72 h-72 bg-rose-400/20 rounded-full blur-3xl"></div>
+          </motion.div>
         </div>
       </section>
 
-      {/* FEATURES SECTION */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-                <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-4">How You Can Help</h2>
-                <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-medium">
-                    Small acts of kindness create big waves of change. Choose your path.
-                </p>
+      {/* 2. STATS BANNER */}
+      <section className="bg-white dark:bg-slate-900 py-12 border-y border-slate-100 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div className="space-y-2">
+              <h3 className="text-4xl font-black text-rose-500">
+                 {stats.livesSaved}+
+              </h3>
+              <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Lives Saved</p>
             </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-                <FeatureCard 
-                    icon={<MapPin className="text-amber-500" size={32} />}
-                    title="Spot & Report"
-                    description="See a stray in need? Drop a pin and snap a pic. We connect you to nearby rescuers in seconds."
-                    link="/notify"
-                    action="Report Now"
-                    color="bg-amber-50 dark:bg-amber-900/20"
-                />
-                <FeatureCard 
-                    icon={<Heart className="text-rose-500" size={32} />}
-                    title="Adopt Love"
-                    description="Swipe through profiles of adorable pets waiting for a forever home. Your new best friend is waiting."
-                    link="/adopt"
-                    action="Find a Friend"
-                    color="bg-rose-50 dark:bg-rose-900/20"
-                />
-                <FeatureCard 
-                    icon={<Activity className="text-blue-500" size={32} />}
-                    title="Vet Care"
-                    description="Find trusted veterinary clinics nearby and book health checkups for your furry friends easily."
-                    link="/find-vet"
-                    action="Book Vet"
-                    color="bg-blue-50 dark:bg-blue-900/20"
-                />
+            <div className="space-y-2">
+              <h3 className="text-4xl font-black text-amber-500">
+                 {stats.rescuers}+
+              </h3>
+              <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Rescuers</p>
             </div>
-        </div>
-      </section>
-
-      {/* CTA SECTION */}
-      {!user && (
-      <section className="px-6 pb-20">
-          <div className="max-w-6xl mx-auto bg-slate-900 dark:bg-slate-800 rounded-[32px] p-12 md:p-16 text-center relative overflow-hidden border dark:border-slate-700">
-                {/* Background Patterns */}
-                <div className="absolute top-0 left-0 w-full h-full opacity-10">
-                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                        <pattern id="dotPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                            <circle cx="2" cy="2" r="1" fill="white" />
-                        </pattern>
-                        <rect width="100%" height="100%" fill="url(#dotPattern)" />
-                    </svg>
-                </div>
-
-                <div className="relative z-10">
-                    <h2 className="text-3xl md:text-5xl font-black text-white mb-6">Join the PetLink Family</h2>
-                    <p className="text-slate-400 mb-10 max-w-2xl mx-auto text-lg">
-                        Create a free account to track your rescue reports, save favorite pets, and become a hero for the voiceless.
-                    </p>
-                    <Link to="/auth" className="inline-flex items-center gap-2 bg-white text-slate-900 px-[32px] py-[16px] rounded-full font-bold text-lg hover:scale-105 transition-transform">
-                        Get Started <ArrowRight size={20} />
-                    </Link>
-                </div>
+            <div className="space-y-2">
+              <h3 className="text-4xl font-black text-teal-500">
+                 {stats.adoptions}+
+              </h3>
+              <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Adoptions</p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-4xl font-black text-indigo-500">
+                 {stats.clinics}+
+              </h3>
+              <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Clinics</p>
+            </div>
           </div>
+        </div>
       </section>
-      )}
+
+      {/* 3. SERVICES GRID */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-800 dark:text-white mb-4">Everything Your Pet Needs</h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-lg">
+              Comprehensive tools for pet owners, finders, and animal lovers.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Card 1 */}
+            <Link to="/adopt" className="group">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:border-teal-500 transition-all h-full">
+                <div className="w-14 h-14 bg-teal-100 dark:bg-teal-900/30 rounded-xl flex items-center justify-center text-teal-600 dark:text-teal-400 mb-6 group-hover:scale-110 transition-transform">
+                  <Heart size={28} />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Adopt a Pet</h3>
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                  Browse hundreds of lovable pets waiting for a forever home. Filter by breed, age, and location.
+                </p>
+                <div className="text-teal-600 dark:text-teal-400 font-bold flex items-center gap-2">
+                  Browse Now <ArrowRight size={18} />
+                </div>
+              </div>
+            </Link>
+
+            {/* Card 2 */}
+            <Link to="/notify" className="group">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:border-rose-500 transition-all h-full">
+                <div className="w-14 h-14 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center text-rose-600 dark:text-rose-400 mb-6 group-hover:scale-110 transition-transform">
+                  <Bell size={28} />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Report Stray</h3>
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                  Found an injured or lost animal? Notify our network of local rescuers immediately with location data.
+                </p>
+                <div className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-2">
+                  Notify Rescuer <ArrowRight size={18} />
+                </div>
+              </div>
+            </Link>
+
+            {/* Card 3 */}
+            <Link to="/find-vet" className="group">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:border-indigo-500 transition-all h-full">
+                <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
+                  <Shield size={28} />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Find a Vet</h3>
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                  Locate verified veterinary clinics near you. View services, ratings, and book appointments easily.
+                </p>
+                <div className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-2">
+                  Locate Clinic <ArrowRight size={18} />
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. FEATURE STRIP (Lost & Found) */}
+      <section className="py-20 bg-amber-50 dark:bg-amber-950/20">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center gap-12">
+          <div className="flex-1">
+             <div className="relative rounded-2xl overflow-hidden shadow-lg transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                <img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80" alt="Lost Dog" className="w-full" />
+             </div>
+          </div>
+          <div className="flex-1 space-y-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">
+              Lost & Found Network
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
+              Our community-powered network helps reunite lost pets with their owners. 
+              View active alerts in your area or report a missing pet to get help fast.
+            </p>
+            <div className="flex gap-4 pt-2">
+              <Link to="/lost-and-found" className="btn bg-amber-500 hover:bg-amber-600 text-white px-8 py-3 rounded-xl shadow-lg shadow-amber-200 dark:shadow-none">
+                View Lost Pets
+              </Link>
+            </div>
+            
+            <div className="flex items-center gap-4 pt-4 text-sm text-slate-500 font-medium">
+              <div className="flex -space-x-3">
+                 <div className="w-10 h-10 rounded-full bg-slate-200 border-2 border-white"></div>
+                 <div className="w-10 h-10 rounded-full bg-slate-300 border-2 border-white"></div>
+                 <div className="w-10 h-10 rounded-full bg-slate-400 border-2 border-white"></div>
+              </div>
+              <span>Joined by 500+ locals</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. CTA SECTION */}
+      <section className="py-24">
+        <div className="max-w-5xl mx-auto px-6 text-center">
+          <div className="bg-slate-900 dark:bg-slate-800 rounded-3xl p-12 md:p-16 relative overflow-hidden shadow-2xl">
+            {/* Background Texture */}
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-rose-500/20 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl"></div>
+            
+            <div className="relative z-10 space-y-8">
+              <h2 className="text-3xl md:text-5xl font-bold text-white">Ready to make a difference?</h2>
+              <p className="text-slate-300 max-w-2xl mx-auto text-lg leading-relaxed">
+                Whether you're looking to adopt, volunteer, or just stay informed, your involvement changes lives.
+              </p>
+              <div className="flex flex-wrap justify-center gap-4">
+                {!user ? (
+                   <Link to="/auth" className="btn bg-rose-600 hover:bg-rose-700 text-white px-10 py-4 rounded-xl font-bold shadow-lg">
+                      Get Started
+                   </Link>
+                ) : (
+                   <Link to="/profile" className="btn bg-white text-slate-900 hover:bg-slate-100 px-10 py-4 rounded-xl font-bold shadow-lg">
+                      My Profile
+                   </Link>
+                )}
+                <Link to="/success-stories" className="btn bg-transparent border-2 border-slate-700 hover:border-slate-500 text-white px-10 py-4 rounded-xl font-bold">
+                   Read Stories
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
     </div>
   );
-}
+};
 
-function FeatureCard({ icon, title, description, link, action, color }) {
-    return (
-        <Link to={link} className="group bg-white dark:bg-slate-800 p-8 rounded-[24px] border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
-            <div className={`w-14 h-14 ${color} rounded-[16px] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                {icon}
-            </div>
-            <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-3">{title}</h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-6 font-medium">
-                {description}
-            </p>
-            <div className="flex items-center gap-2 text-slate-800 dark:text-emerald-400 font-bold text-sm group-hover:gap-3 transition-all">
-                {action} <ArrowRight size={16} />
-            </div>
-        </Link>
-    );
-}
+export default Home;

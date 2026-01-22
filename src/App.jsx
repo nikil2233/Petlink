@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
 import NotifyRescuer from './pages/NotifyRescuer';
@@ -23,11 +24,13 @@ import ResetPassword from './pages/ResetPassword';
 import SuccessStories from './pages/SuccessStories';
 
 import UserProfile from './pages/UserProfile';
+import ChatDrawer from './components/ChatDrawer';
 
 function App() {
   return (
     <Router>
       <Navbar />
+      <ChatDrawer />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
@@ -46,6 +49,7 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/lost-and-found" element={<LostAndFound />} />
       </Routes>
+      <Footer />
     </Router>
   );
 }

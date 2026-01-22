@@ -4,10 +4,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
     MapPin, Camera, AlertTriangle, Send, X, Search, Phone, 
     Calendar, Clock, PawPrint, CheckCircle, FileText, Download, 
-    Share2, Eye, Shield, Lock, Unlock, Truck, Heart, Bell, ChevronLeft, ChevronRight 
+    Share2, Eye, Shield, Lock, Unlock, Truck, Heart, Bell, ChevronLeft, ChevronRight, MessageCircle 
 } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
 import { motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 
@@ -16,6 +17,7 @@ export default function LostAndFound() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, session } = useAuth();
+  const { openChat } = useChat();
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts', 'report'
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -49,7 +51,6 @@ export default function LostAndFound() {
   const [temperament, setTemperament] = useState('Friendly');
 
   // D. Security & Contact
-  const [microchipStatus, setMicrochipStatus] = useState('Unknown');
   const [contactPhone, setContactPhone] = useState('');
   const [hideContact, setHideContact] = useState(false);
 
@@ -59,6 +60,24 @@ export default function LostAndFound() {
   const [isInjured, setIsInjured] = useState(false);
   const [injuryDetails, setInjuryDetails] = useState('');
   const [rescuers, setRescuers] = useState([]);
+  
+  // Validation State
+  const [dateError, setDateError] = useState('');
+
+  const handleDateChange = (e) => {
+      const selected = e.target.value;
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (selected > today) {
+          setDateError('Date cannot be in the future.');
+          // Still update state so user sees what they picked, but error persists? 
+          // Or block? Let's just update and show error.
+          setLastSeenDate(selected);
+      } else {
+          setDateError('');
+          setLastSeenDate(selected);
+      }
+  };
 
   // --- PET DETAIL MODAL STATE ---
   const [selectedPet, setSelectedPet] = useState(null);
@@ -168,7 +187,11 @@ export default function LostAndFound() {
             .order('created_at', { ascending: false });
 
         if (activeTab === 'reunited') {
-             query = query.eq('status', 'reunited');
+             const fiveDaysAgo = new Date();
+             fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+             query = query
+                .eq('status', 'reunited')
+                .gt('updated_at', fiveDaysAgo.toISOString());
         } else {
              query = query.neq('status', 'reunited');
         }
@@ -322,12 +345,10 @@ export default function LostAndFound() {
             last_seen_date: lastSeenDate,
             last_seen_time: lastSeenTime,
             last_seen_location: locationName,
+            last_seen_location: locationName,
             latitude: coords ? coords.lat : null,
             longitude: coords ? coords.lng : null,
             temperament,
-            microchip_status: microchipStatus,
-            contact_phone: contactPhone,
-            hide_contact: hideContact,
             contact_phone: contactPhone,
             hide_contact: hideContact,
             status: reportType, // 'lost' or 'found'
@@ -360,7 +381,10 @@ export default function LostAndFound() {
 
   const markReunited = async (id) => {
       // Direct update, no confirm here because modal confirms intent
-      const { error } = await supabase.from('lost_pets').update({ status: 'reunited' }).eq('id', id);
+      const { error } = await supabase.from('lost_pets').update({ 
+          status: 'reunited',
+          updated_at: new Date() 
+      }).eq('id', id);
       if (error) console.error(error);
       else {
           setShowHoorayModal(true);
@@ -523,6 +547,21 @@ export default function LostAndFound() {
   const [sightingCoords, setSightingCoords] = useState(null);
   const [reporterPhone, setReporterPhone] = useState('');
   const sightingFileRef = useRef(null);
+  
+  const [sightingDateError, setSightingDateError] = useState('');
+
+  const handleSightingDateChange = (e) => {
+    const selected = e.target.value;
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (selected > today) {
+        setSightingDateError('Date cannot be in the future.');
+        setSightingDate(selected);
+    } else {
+        setSightingDateError('');
+        setSightingDate(selected);
+    }
+  };
 
   const openSightingModal = () => {
       setSightingDate(new Date().toISOString().split('T')[0]);
@@ -935,10 +974,25 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
 
                             {/* Actions */}
                             <div className="pt-6 border-t border-slate-100 flex flex-col gap-3">
-                                {!selectedPet.hide_contact && (
-                                    <a href={`tel:${selectedPet.contact_phone}`} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-lg hover:shadow-xl hover:-translate-y-1 transform transition-all">
-                                        <Phone size={20} /> Call Owner
-                                    </a>
+                                {session?.user?.id !== selectedPet.owner_id && (
+                                    <>
+                                        <button 
+                                            onClick={() => {
+                                                openChat(selectedPet.owner_id);
+                                                // Optional: close modal? setSelectedPet(null); 
+                                                // keeping open allows context
+                                            }}
+                                            className="w-full bg-rose-500 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-rose-600 transition-colors shadow-lg hover:shadow-xl hover:-translate-y-1 transform transition-all"
+                                        >
+                                            <MessageCircle size={20} /> Message Owner
+                                        </button>
+
+                                        {!selectedPet.hide_contact && (
+                                            <a href={`tel:${selectedPet.contact_phone}`} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-lg hover:shadow-xl hover:-translate-y-1 transform transition-all">
+                                                <Phone size={20} /> Call Owner
+                                            </a>
+                                        )}
+                                    </>
                                 )}
                                 
                                 <div className="flex gap-3">
@@ -1008,6 +1062,14 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                                                     <a href={`tel:${sighting.reporter_phone}`} className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 hover:bg-orange-200">
                                                                         <Phone size={10} /> {sighting.reporter_phone}
                                                                     </a>
+                                                                )}
+                                                                {sighting.reporter_id && sighting.reporter_id !== user?.id && (
+                                                                     <button 
+                                                                        onClick={() => openChat(sighting.reporter_id)}
+                                                                        className="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 hover:bg-rose-200"
+                                                                     >
+                                                                         <MessageCircle size={10} /> Chat
+                                                                     </button>
                                                                 )}
                                                             </div>
                                                             <p className="text-xs text-slate-500">
@@ -1202,7 +1264,16 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
             </div>
         </div>
 
-        {activeTab === 'alerts' ? (
+        {activeTab === 'alerts' || activeTab === 'reunited' ? (
+            <div className="flex flex-col gap-6">
+            {activeTab === 'reunited' && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 text-green-800 dark:text-green-300 px-6 py-4 rounded-2xl mb-6 flex items-center gap-3">
+                    <Clock size={20} className="shrink-0" />
+                    <p className="text-sm font-medium">
+                        Reunited pets are celebrated here for 5 days exactly from the moment they are marked as found, before being automatically archived.
+                    </p>
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {lostPets.length === 0 && (
                     <div className="col-span-full py-20 text-center text-slate-400">
@@ -1299,6 +1370,7 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                         </div>
                     </div>
                 ))}
+            </div>
             </div>
         ) : (
             <div className="max-w-3xl mx-auto">
@@ -1452,7 +1524,15 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                     <Section title="C. The Incident">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <InputGroup label="Date Lost/Found">
-                                <input type="date" className="input-field" value={lastSeenDate} onChange={e => setLastSeenDate(e.target.value)} required />
+                                <input 
+                                    type="date" 
+                                    className={`input-field ${dateError ? 'border-red-500 focus:border-red-500' : ''}`}
+                                    value={lastSeenDate} 
+                                    onChange={handleDateChange} 
+                                    max={new Date().toISOString().split('T')[0]}
+                                    required 
+                                />
+                                {dateError && <p className="text-xs text-red-500 font-bold mt-1">{dateError}</p>}
                             </InputGroup>
                             <InputGroup label="Time">
                                 <input type="time" className="input-field" value={lastSeenTime} onChange={e => setLastSeenTime(e.target.value)} />
@@ -1487,13 +1567,6 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                     {/* D. SECURITY & CONTACT */}
                     <Section title="D. Security & Contact">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                            <InputGroup label="Microchip Status">
-                                <select className="input-field" value={microchipStatus} onChange={e => setMicrochipStatus(e.target.value)}>
-                                    <option>Yes</option>
-                                    <option>No</option>
-                                    <option>Unknown</option>
-                                </select>
-                            </InputGroup>
                             <InputGroup label="Contact Phone">
                                 <input type="tel" className="input-field" value={contactPhone} onChange={e => setContactPhone(e.target.value)} required placeholder="(+94) 76 123 4567" />
                             </InputGroup>
@@ -1749,10 +1822,12 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                 <input 
                                     type="date"
                                     required
-                                    className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
+                                    className={`w-full bg-slate-50 dark:bg-slate-700/50 border ${sightingDateError ? 'border-red-500' : 'border-slate-200 dark:border-slate-600'} rounded-xl px-4 py-3 font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-500`}
                                     value={sightingDate}
-                                    onChange={e => setSightingDate(e.target.value)}
+                                    onChange={handleSightingDateChange}
+                                    max={new Date().toISOString().split('T')[0]}
                                 />
+                                {sightingDateError && <p className="text-xs text-red-500 font-bold mt-1">{sightingDateError}</p>}
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Time</label>

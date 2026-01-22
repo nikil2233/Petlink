@@ -262,7 +262,7 @@ export default function FindVet() {
                                         )}
                                       </div>
                                       <div>
-                                        <h3 className="text-lg font-black text-slate-800 leading-tight group-hover:text-emerald-600 transition-colors">{vet.name}</h3>
+                                        <h3 className="text-lg font-black text-slate-800 dark:text-white leading-tight group-hover:text-emerald-600 transition-colors">{vet.name}</h3>
                                         <div className="flex items-center gap-1 text-xs font-bold text-amber-500 mt-1">
                                             <Star size={12} fill="currentColor" /> {vet.rating}
                                             <span className="text-slate-300 mx-1">•</span>
@@ -272,7 +272,7 @@ export default function FindVet() {
                                   </div>
                               </div>
                               
-                              <div className="flex items-start gap-2 text-slate-500 text-sm mb-4 pl-[3.75rem]">
+                              <div className="flex items-start gap-2 text-slate-500 dark:text-slate-400 text-sm mb-4 pl-[3.75rem]">
                                   <MapPin size={16} className="shrink-0 mt-0.5 text-slate-400 group-hover:text-emerald-500 transition-colors" />
                                   <span className="line-clamp-2 leading-relaxed">{vet.address}</span>
                               </div>

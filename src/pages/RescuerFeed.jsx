@@ -593,7 +593,7 @@ export default function RescuerFeed() {
                               {selectedReport.status === 'pending' && (
                                   <div className="flex gap-4 pt-6 border-t border-slate-100 dark:border-slate-700">
                                       <button 
-                                          onClick={() => { updateReportStatus(selectedReport.id, 'rejected'); setSelectedReport(null); }}
+                                          onClick={() => { updateReportStatus(selectedReport.id, 'declined'); setSelectedReport(null); }}
                                           className="flex-1 py-4 rounded-xl font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
                                       >
                                           Decline Report

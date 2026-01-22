@@ -6,12 +6,14 @@ import {
   Menu, X, Heart, LogOut, Stethoscope, 
   MapPin, Calendar, ChevronDown, Bell, 
   PawPrint, Home, Megaphone, Activity, 
-  User, Dog, AlertTriangle, Clipboard
+  User, Dog, AlertTriangle, Clipboard, MessageCircle, Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useChat } from '../context/ChatContext';
 
 export default function Navbar() {
   const { session, user, role: userRole, signOut } = useAuth();
+  const { setIsOpen: setIsOpenChat, unreadCount } = useChat();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -71,12 +73,32 @@ export default function Navbar() {
         
         {/* LOGO */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="bg-gradient-to-br from-rose-500 to-orange-500 p-2 rounded-full shadow-md transform group-hover:rotate-12 transition-transform">
-            <PawPrint size={20} fill="white" className="text-white" />
+           <div className="relative flex items-center justify-center w-10 h-10">
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative z-10"
+              >
+                  <Shield size={36} className="text-rose-600 dark:text-rose-500 fill-rose-100 dark:fill-rose-900/30 drop-shadow-sm" />
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                    className="absolute inset-0 flex items-center justify-center pt-1"
+                  >
+                      <PawPrint size={18} className="text-rose-600 dark:text-rose-400 fill-current" />
+                  </motion.div>
+                  
+                  {/* Pulse Effect */}
+                  <div className="absolute inset-0 bg-rose-500/20 rounded-full blur-xl -z-10 animate-pulse"></div>
+              </motion.div>
+           </div>
+          
+          <div className="hidden sm:flex flex-col">
+            <span className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter leading-none flex items-center gap-0.5">
+              Pet<span className="text-rose-600 dark:text-rose-500">Link</span>
+            </span>
           </div>
-          <span className="text-xl font-black bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-200 bg-clip-text text-transparent tracking-tight hidden sm:block">
-            PetLink
-          </span>
         </Link>
 
         {/* DESKTOP MENU */}
@@ -121,6 +143,19 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
             {session ? (
                 <>
+                   {/* CHAT */}
+                   <button 
+                     onClick={() => setIsOpenChat(true)}
+                     className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-all relative"
+                   >
+                       <MessageCircle size={20} />
+                       {unreadCount > 0 && (
+                           <span className="absolute top-1 right-1 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                               {unreadCount}
+                           </span>
+                       )}
+                   </button>
+
                    {/* NOTIFICATIONS */}
                    <div className="relative">
                        <button 
