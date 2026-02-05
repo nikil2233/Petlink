@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, MapPin, ArrowRight, Building, Stethoscope, HeartHandshake, Image as ImageIcon, Check, AlertTriangle, ArrowLeft, Target, PawPrint } from 'lucide-react';
 import InteractiveDog from '../components/InteractiveDog';
-
+import toast from 'react-hot-toast';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -66,7 +66,7 @@ export default function Auth() {
               redirectTo: window.location.origin + '/reset-password',
           });
           if (error) throw error;
-          setSuccessMsg("Password reset link sent! Check your email.");
+          setSuccessMsg("Link sent! Open the email on THIS device if testing locally.");
       } catch (err) {
           setError(err.message);
       } finally {
@@ -131,12 +131,30 @@ export default function Auth() {
               if (profileError) console.error("Auth: Profile error:", profileError);
               
               setSuccessMsg("Registration successful! Welcome.");
+              
+              // Custom Toast based on role
+              if (role !== 'user') {
+                  toast((t) => (
+                    <div className="flex flex-col gap-1">
+                      <span className="font-bold">Welcome directly to PetLink! 🐾</span>
+                      <span className="text-sm">Please verify your identity to unlock all features.</span>
+                    </div>
+                  ), { 
+                    duration: 6000, 
+                    icon: '🛡️',
+                    className: 'bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 shadow-xl p-4'
+                  });
+              } else {
+                  toast.success("Welcome to PetLink! 🐾");
+              }
+
               setTimeout(() => navigate('/'), 1500);
             }
           }
     } catch (err) {
       console.error(err);
       setError(err.message || "An error occurred");
+      toast.error(err.message || "Authentication failed");
     } finally {
       setLoading(false);
     }

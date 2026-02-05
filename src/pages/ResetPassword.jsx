@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Check, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Lock, Check, AlertTriangle, ArrowRight, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function ResetPassword() {
@@ -9,19 +9,38 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [isLinkInvalid, setIsLinkInvalid] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if we have a hash (which implies we are handling a password recovery)
-    // Supabase puts the access_token in the URL hash for recovery flows
+    // Check for errors passed in the URL (e.g., link expired, used, or invalid)
     const hash = window.location.hash;
-    if (!hash || !hash.includes('type=recovery')) {
-       // Ideally we might want to redirect if random access, but for now just let it be
+    const search = window.location.search; // Sometimes errors come in search params too
+
+    const checkParams = (params) => {
+        const urlParams = new URLSearchParams(params.replace('#', '?'));
+        const errorDesc = urlParams.get('error_description');
+        const errorCode = urlParams.get('error_code');
+        const errorType = urlParams.get('error');
+
+        if (errorDesc || errorCode || errorType) {
+            console.error("Reset Link Error:", errorDesc);
+            setError(errorDesc?.replace(/\+/g, ' ') || "This password reset link is invalid or has expired.");
+            setIsLinkInvalid(true);
+            return true;
+        }
+        return false;
+    };
+
+    if (!checkParams(hash)) {
+        checkParams(search);
     }
   }, []);
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
+    if (isLinkInvalid) return;
+
     setLoading(true);
     setError(null);
 
@@ -35,39 +54,56 @@ export default function ResetPassword() {
       setSuccess(true);
       setTimeout(() => {
           navigate('/auth');
-      }, 3000); // Redirect after 3 seconds
+      }, 3000); 
       
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      // Friendly error if session is missing (likely due to link issues)
+      if (err.message.includes("Auth session missing")) {
+          setError("Session expired. This link may have already been used.");
+          setIsLinkInvalid(true);
+      } else {
+          setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-orange-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl border border-white/50 dark:border-slate-700/50 w-full max-w-md transition-colors duration-300"
+        className="bg-white dark:bg-slate-800 p-8 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-700 w-full max-w-md"
       >
         <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-600 dark:text-rose-400 shadow-sm">
-                <Lock size={32} />
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm ${isLinkInvalid ? 'bg-red-100 dark:bg-red-900/30 text-red-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
+                {isLinkInvalid ? <AlertTriangle size={32} /> : <Lock size={32} />}
             </div>
-            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Set New Password</h2>
-            <p className="text-slate-500 dark:text-slate-400">Enter your new secure password below.</p>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">
+                {isLinkInvalid ? 'Link Expired' : 'Set New Password'}
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400">
+                {isLinkInvalid ? 'This reset link is no longer valid.' : 'Enter your new secure password below.'}
+            </p>
         </div>
 
         {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-6 flex items-center gap-2 text-sm font-bold border border-red-100 dark:border-red-900/30">
-                <AlertTriangle size={18} /> {error}
+            <div className={`px-4 py-3 rounded-xl mb-6 flex items-start gap-2 text-sm font-bold border ${isLinkInvalid ? 'bg-red-50 dark:bg-red-900/20 text-red-600 border-red-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
+                <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                <span>{error}</span>
             </div>
         )}
 
-        {success ? (
+        {isLinkInvalid ? (
+            <button 
+                onClick={() => navigate('/auth')}
+                className="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-bold py-4 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            >
+                <RefreshCw size={20} /> Request New Link
+            </button>
+        ) : success ? (
             <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-6 py-8 rounded-xl text-center border border-green-100 dark:border-green-900/30">
                 <div className="w-12 h-12 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center mx-auto mb-3 text-green-600 dark:text-green-400">
                     <Check size={24} />
