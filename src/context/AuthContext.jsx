@@ -10,6 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [role, setRole] = useState(null);
+  const [profile, setProfile] = useState(null); // Full profile data
   const [loading, setLoading] = useState(true);
 
 
@@ -28,8 +29,8 @@ export const AuthProvider = ({ children }) => {
                 console.log("AuthContext: Session found, setting user");
                 setSession(currentSession);
                 setUser(currentSession.user);
-                console.log("AuthContext: fetching role (background)");
-                fetchUserRole(currentSession.user.id);
+                console.log("AuthContext: fetching profile (background)");
+                fetchUserProfile(currentSession.user.id);
             } else {
                 console.log("AuthContext: No session found");
             }
@@ -52,11 +53,12 @@ export const AuthProvider = ({ children }) => {
             setSession(null);
             setUser(null);
             setRole(null);
+            setProfile(null);
             setLoading(false);
         } else if (currentSession) {
             setSession(currentSession);
             setUser(currentSession.user);
-            fetchUserRole(currentSession.user.id);
+            fetchUserProfile(currentSession.user.id);
             setLoading(false);
         }
     });
@@ -66,8 +68,8 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const fetchUserRole = async (userId) => {
-      console.log("AuthContext: fetchUserRole start for", userId);
+  const fetchUserProfile = async (userId) => {
+      console.log("AuthContext: fetchUserProfile start for", userId);
       try {
           // Timeout promise
           const timeoutPromise = new Promise((_, reject) => 
@@ -76,7 +78,7 @@ export const AuthProvider = ({ children }) => {
           
           const dbPromise = supabase
               .from('profiles')
-              .select('role')
+              .select('*') // Fetch ALL columns (role, is_verified, etc)
               .eq('id', userId)
               .maybeSingle();
 
@@ -88,22 +90,31 @@ export const AuthProvider = ({ children }) => {
           console.log("AuthContext: profile data received", data);
           if (data) {
               setRole(data.role);
+              setProfile(data);
           } else {
               console.warn("AuthContext: No profile found for user, defaulting to 'user'");
               setRole('user'); // Default
+              setProfile({ role: 'user', is_verified: true }); // Mock safe default
           }
       } catch (err) {
-          console.error("Error fetching role:", err);
+          console.error("Error fetching profile:", err);
           setRole('user');
+          setProfile(null);
       }
-      console.log("AuthContext: fetchUserRole end");
+      console.log("AuthContext: fetchUserProfile end");
   };
+  
+  // Refresh function for components to call after updates (like verification upload)
+  const refreshProfile = async () => {
+      if (user) await fetchUserProfile(user.id);
+  }
 
   const signOut = async () => {
       // Force cleanup local state immediately
       setSession(null);
       setUser(null);
       setRole(null);
+      setProfile(null);
       
       // Clear all Supabase related local storage
       Object.keys(localStorage).forEach(key => {
@@ -123,7 +134,9 @@ export const AuthProvider = ({ children }) => {
       session,
       user,
       role,
+      profile, // Export full profile
       signOut,
+      refreshProfile, // Export refresh function
       loading
   };
 

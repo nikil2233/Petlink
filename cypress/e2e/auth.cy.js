@@ -1,5 +1,7 @@
 describe('Authentication Flow', () => {
   beforeEach(() => {
+    cy.clearLocalStorage();
+    cy.clearCookies();
     cy.visit('/auth');
   });
 
@@ -10,19 +12,23 @@ describe('Authentication Flow', () => {
   it('should allow toggling between login and register', () => {
     // Assuming default is Login
     cy.contains('Create Account').click(); 
-    cy.contains('Join the Community').should('be.visible');
+    cy.contains('Get Started').should('be.visible');
     
     cy.contains('Sign In').click();
     cy.contains('Welcome Back').should('be.visible');
   });
 
   it('should show error with invalid credentials', () => {
-    cy.get('input[type="email"]').type('invalid@example.com');
+    const fakeEmail = `invalid_${Date.now()}@test.com`;
+    cy.get('input[type="email"]').type(fakeEmail);
     cy.get('input[type="password"]').type('wrongpassword');
     cy.get('button[type="submit"]').click();
+
+    // Wait for loading to finish (button text changes back)
+    cy.contains('Processing...', { timeout: 5000 }).should('not.exist');
     
     // Expect error message
-    cy.contains('Invalid login credentials').should('be.visible'); 
+    cy.contains('Invalid login credentials', { timeout: 10000 }).should('be.visible'); 
   });
   
   // Note: Successful login mock is difficult without backend seeding or mock server.

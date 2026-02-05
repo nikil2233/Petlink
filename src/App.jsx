@@ -24,6 +24,7 @@ import ResetPassword from './pages/ResetPassword';
 import SuccessStories from './pages/SuccessStories';
 
 import UserProfile from './pages/UserProfile';
+import VerificationUpload from './pages/VerificationUpload';
 import ChatDrawer from './components/ChatDrawer';
 
 function App() {
@@ -48,6 +49,7 @@ function App() {
         <Route path="/vet-appointments" element={<VetAppointments />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/lost-and-found" element={<LostAndFound />} />
+        <Route path="/verify-account" element={<VerificationUpload />} />
       </Routes>
       <Footer />
     </Router>

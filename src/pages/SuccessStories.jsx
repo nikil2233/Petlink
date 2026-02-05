@@ -2,7 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Camera, PenTool, X, Send, Award, Calendar, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Camera, PenTool, X, Send, Award, Calendar, Trash2, Star, Sparkles } from 'lucide-react';
+import { AnimatedDog, AnimatedCat, AnimatedParrot } from '../components/AnimatedPets';
+
+const DEFAULT_IMAGES = [
+  "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=800&q=80"
+];
 
 export default function SuccessStories() {
   const { user, role } = useAuth();
@@ -272,8 +281,87 @@ export default function SuccessStories() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-900 pb-20 transition-colors duration-300">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-900 pb-20 transition-colors duration-300 relative overflow-hidden">
+      {/* Floating Background Icons */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+          <motion.div animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} className="absolute top-20 left-10 text-emerald-500/10">
+              <Star size={64} />
+          </motion.div>
+          <motion.div animate={{ y: [0, 30, 0], rotate: [0, -15, 0] }} transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }} className="absolute top-1/3 right-10 text-yellow-500/10">
+              <Sparkles size={80} />
+          </motion.div>
+          <motion.div animate={{ y: [0, -25, 0], scale: [1, 1.1, 1] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }} className="absolute bottom-1/4 left-20 text-teal-500/10">
+              <Heart size={50} />
+          </motion.div>
+      </div>
       
+      {/* Flying Parrot */}
+      <div className="fixed top-32 left-0 w-full h-20 pointer-events-none z-10 overflow-hidden">
+        <motion.div
+            initial={{ x: -100, y: 0 }}
+            animate={{ 
+                x: ["0vw", "120vw"],
+                y: [0, -20, 10, -10, 0]
+             }}
+            transition={{ 
+                duration: 15,
+                repeat: Infinity,
+                repeatDelay: 45, // Total cycle ~ 1 minute
+                ease: "linear",
+                times: [0, 1]
+            }}
+            className="absolute text-emerald-500 dark:text-emerald-400"
+        >
+            <div className="w-16 h-16 transform -scale-x-100"> 
+               <AnimatedParrot />
+            </div>
+            <motion.div 
+                animate={{ rotate: [-20, 10, -20] }} 
+                transition={{ duration: 0.2, repeat: Infinity }}
+            >
+                {/* Wing flap simulation */}
+            </motion.div>
+        </motion.div>
+      </div>
+
+      {/* Peeping Pets */}
+      <div className="fixed bottom-0 right-10 z-50 flex gap-4 pointer-events-none">
+          {/* Peeping Dog */}
+          <motion.div
+            animate={{ y: [100, 0, 0, 100] }}
+            transition={{ 
+                duration: 4,
+                times: [0, 0.2, 0.8, 1],
+                repeat: Infinity,
+                repeatDelay: 10,
+                ease: "easeInOut"
+            }}
+            className="bg-amber-100 p-0 rounded-t-full border-4 border-amber-500 border-b-0 overflow-hidden w-16 h-16 flex items-end justify-center"
+          >
+              <div className="w-full h-full transform translate-y-1">
+                 <AnimatedDog />
+              </div>
+          </motion.div>
+
+           {/* Peeping Cat */}
+           <motion.div
+            animate={{ y: [100, 0, 0, 100] }}
+            transition={{ 
+                duration: 5,
+                times: [0, 0.2, 0.8, 1],
+                repeat: Infinity,
+                repeatDelay: 7,
+                delay: 3,
+                ease: "easeInOut"
+            }}
+            className="bg-gray-100 p-0 rounded-t-full border-4 border-gray-500 border-b-0 overflow-hidden w-16 h-16 flex items-end justify-center"
+          >
+               <div className="w-full h-full transform translate-y-2 scale-90">
+                  <AnimatedCat />
+               </div>
+          </motion.div>
+      </div>
+
       {/* Hero Header */}
       <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-16 px-4 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
@@ -429,12 +517,14 @@ export default function SuccessStories() {
                           </div>
 
                           {/* Image */}
-                          {story.image_url && (
-                              <div className="aspect-video bg-slate-100 dark:bg-slate-700 relative overflow-hidden group">
-                                  <img src={story.image_url} alt={story.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                              </div>
-                          )}
+                          <div className="aspect-video bg-slate-100 dark:bg-slate-700 relative overflow-hidden group">
+                              <img 
+                                src={story.image_url || DEFAULT_IMAGES[index % DEFAULT_IMAGES.length]} 
+                                alt={story.title} 
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                          </div>
 
                           {/* Content */}
                           <div className="p-8 pb-4">

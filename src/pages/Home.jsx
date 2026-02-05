@@ -1,9 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { PawPrint, Heart, Bell, Shield, MapPin, ArrowRight, Activity, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+
+const CountUp = ({ to }) => {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, Math.round);
+
+  useEffect(() => {
+    const controls = animate(count, to, { duration: 2, ease: "easeOut" });
+    return controls.stop;
+  }, [to]);
+
+  return <motion.span>{rounded}</motion.span>;
+};
 
 const Home = () => {
   const { user } = useAuth();
@@ -122,30 +134,97 @@ const Home = () => {
       </section>
 
       {/* 2. STATS BANNER */}
-      <section className="bg-white dark:bg-slate-900 py-12 border-y border-slate-100 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="relative overflow-hidden bg-white dark:bg-slate-900 py-12 border-y border-slate-100 dark:border-slate-800">
+        {/* Floating Icons Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <motion.div
+            animate={{ 
+              y: [0, -20, 0], 
+              rotate: [0, 10, 0],
+              opacity: [0.3, 0.6, 0.3]
+            }}
+            transition={{ 
+              duration: 5, 
+              repeat: Infinity, 
+              ease: "easeInOut" 
+            }}
+            className="absolute top-10 left-[10%] text-rose-200 dark:text-rose-900/40"
+          >
+            <PawPrint size={64} />
+          </motion.div>
+          <motion.div
+            animate={{ 
+              y: [0, 25, 0], 
+              rotate: [0, -15, 0],
+              opacity: [0.2, 0.5, 0.2]
+            }}
+            transition={{ 
+              duration: 7, 
+              repeat: Infinity, 
+              ease: "easeInOut",
+              delay: 1
+            }}
+            className="absolute bottom-5 right-[15%] text-amber-200 dark:text-amber-900/40"
+          >
+            <PawPrint size={80} />
+          </motion.div>
+           <motion.div
+            animate={{ 
+              y: [0, -15, 0], 
+              scale: [1, 1.1, 1],
+              opacity: [0.2, 0.4, 0.2]
+            }}
+            transition={{ 
+              duration: 6, 
+              repeat: Infinity, 
+              ease: "easeInOut",
+              delay: 2
+            }}
+            className="absolute top-1/2 left-[45%] text-teal-100 dark:text-teal-900/30"
+          >
+            <Heart size={100} />
+          </motion.div>
+           <motion.div
+            animate={{ 
+              y: [0, 20, 0], 
+              rotate: [0, 5, 0],
+              opacity: [0.1, 0.3, 0.1]
+            }}
+            transition={{ 
+              duration: 8, 
+              repeat: Infinity, 
+              ease: "easeInOut",
+              delay: 0.5
+            }}
+            className="absolute top-5 right-[5%] text-indigo-100 dark:text-indigo-900/30"
+          >
+            <Shield size={50} />
+          </motion.div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div className="space-y-2">
               <h3 className="text-4xl font-black text-rose-500">
-                 {stats.livesSaved}+
+                 <CountUp to={stats.livesSaved} />+
               </h3>
               <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Lives Saved</p>
             </div>
             <div className="space-y-2">
               <h3 className="text-4xl font-black text-amber-500">
-                 {stats.rescuers}+
+                 <CountUp to={stats.rescuers} />+
               </h3>
               <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Rescuers</p>
             </div>
             <div className="space-y-2">
               <h3 className="text-4xl font-black text-teal-500">
-                 {stats.adoptions}+
+                 <CountUp to={stats.adoptions} />+
               </h3>
               <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Adoptions</p>
             </div>
             <div className="space-y-2">
               <h3 className="text-4xl font-black text-indigo-500">
-                 {stats.clinics}+
+                 <CountUp to={stats.clinics} />+
               </h3>
               <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Clinics</p>
             </div>

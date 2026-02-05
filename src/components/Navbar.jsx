@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '../context/ChatContext';
 
 export default function Navbar() {
-  const { session, user, role: userRole, signOut } = useAuth();
+  const { session, user, role: userRole, signOut, profile } = useAuth();
   const { setIsOpen: setIsOpenChat, unreadCount } = useChat();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -141,6 +141,15 @@ export default function Navbar() {
 
         {/* RIGHT SIDE ACTIONS */}
         <div className="flex items-center gap-3">
+            {/* Verification Warning (For Pro Roles) */}
+            {['vet', 'rescuer', 'shelter'].includes(userRole) && profile && !profile.is_verified && (
+                <Link 
+                    to="/verify-account"
+                    className="hidden md:flex items-center gap-2 bg-amber-500/10 text-amber-600 dark:text-amber-500 px-3 py-1.5 rounded-full text-xs font-bold ring-1 ring-amber-500/20 hover:bg-amber-500 hover:text-white transition-all"
+                >
+                    <AlertTriangle size={14} /> Verify Account
+                </Link>
+            )}
             {session ? (
                 <>
                    {/* CHAT */}

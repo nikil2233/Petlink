@@ -709,7 +709,9 @@ export default function BookAppointment() {
                                         key={vet.id}
                                         onClick={() => {
                                             setFormData(prev => ({ ...prev, vetId: vet.id }));
-                                            nextStep();
+                                            // Bypass validation race condition by manually advancing
+                                            setStep(5);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
                                         }}
                                         className={`p-4 rounded-[16px] border cursor-pointer flex justify-between items-center transition-all ${
                                             formData.vetId === vet.id 

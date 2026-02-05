@@ -342,9 +342,8 @@ export default function LostAndFound() {
             description: distinctiveFeatures || 'No description provided', // Fallback for legacy column
             image_url: mainImage,
             additional_images: uploadedImageUrls,
-            last_seen_date: lastSeenDate,
-            last_seen_time: lastSeenTime,
-            last_seen_location: locationName,
+            last_seen_date: lastSeenDate || null,
+            last_seen_time: lastSeenTime || null,
             last_seen_location: locationName,
             latitude: coords ? coords.lat : null,
             longitude: coords ? coords.lng : null,
@@ -354,7 +353,7 @@ export default function LostAndFound() {
             status: reportType, // 'lost' or 'found'
             // New Fields
             custody_status: reportType === 'found' ? custodyStatus : null,
-            custody_rescuer_id: (reportType === 'found' && custodyStatus === 'rescuer_notified') ? selectedRescuer : null,
+            custody_rescuer_id: (reportType === 'found' && custodyStatus === 'rescuer_notified') ? (selectedRescuer || null) : null,
             is_injured: reportType === 'found' ? isInjured : false,
             injury_details: (reportType === 'found' && isInjured) ? injuryDetails : null,
             injury_images: (reportType === 'found' && isInjured) ? uploadedInjuryImageUrls : []
@@ -373,7 +372,7 @@ export default function LostAndFound() {
 
     } catch (err) {
       console.error(err);
-      setMsg({ type: 'error', text: 'Structure Update Required: Please run the new SQL migration script.' });
+      setMsg({ type: 'error', text: err.message || 'Error processing request.' });
     } finally {
       setLoading(false);
     }
