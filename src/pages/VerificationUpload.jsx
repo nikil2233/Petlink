@@ -7,8 +7,9 @@ import { motion } from 'framer-motion';
 export default function VerificationUpload() {
   const { user, role: userRole, refreshProfile } = useAuth(); // role is enough, no need for userRole alias technically but reusing
   
-  // State for Two Files
-  const [nicFile, setNicFile] = useState(null);
+  // State for Files
+  const [nicFrontFile, setNicFrontFile] = useState(null);
+  const [nicBackFile, setNicBackFile] = useState(null);
   const [licenseFile, setLicenseFile] = useState(null);
   
   const [uploading, setUploading] = useState(false);
@@ -19,15 +20,22 @@ export default function VerificationUpload() {
   const getLicenseRequirement = () => {
       if (userRole === 'vet') return { title: "SLVC / Veterinary License", required: true };
       if (userRole === 'shelter') return { title: "Business / NGO Registration", required: true };
-      if (userRole === 'rescuer') return { title: "Proof of Rescue Work (Optional)", required: false }; // Rescuers might optional? No user said ALL.
+      if (userRole === 'rescuer') return { title: "Proof of Rescue Work (Optional)", required: false };
       return { title: "Additional Document", required: false };
   };
 
   const licenseReq = getLicenseRequirement();
 
-  const handleNicChange = (e) => {
+  const handleNicFrontChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setNicFile(e.target.files[0]);
+      setNicFrontFile(e.target.files[0]);
+      setError(null);
+    }
+  };
+
+  const handleNicBackChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setNicBackFile(e.target.files[0]);
       setError(null);
     }
   };
@@ -54,8 +62,12 @@ export default function VerificationUpload() {
     if (!user) return;
     
     // Validation
-    if (!nicFile) {
-        setError("Please upload your National ID (NIC).");
+    if (!nicFrontFile) {
+        setError("Please upload your NIC Front Side.");
+        return;
+    }
+    if (!nicBackFile) {
+        setError("Please upload your NIC Back Side.");
         return;
     }
     if (licenseReq.required && !licenseFile) {
@@ -67,19 +79,23 @@ export default function VerificationUpload() {
     setError(null);
 
     try {
-      // 1. Upload NIC
-      const nicUrl = await uploadFileToStorage(nicFile, 'NIC');
+      // 1. Upload NIC Front
+      const nicFrontUrl = await uploadFileToStorage(nicFrontFile, 'NIC_FRONT');
       
-      // 2. Upload License (if exists)
+      // 2. Upload NIC Back
+      const nicBackUrl = await uploadFileToStorage(nicBackFile, 'NIC_BACK');
+      
+      // 3. Upload License (if exists)
       let licenseUrl = null;
       if (licenseFile) {
           licenseUrl = await uploadFileToStorage(licenseFile, 'LICENSE');
       }
 
-      // 3. Update Profile with BOTH URLs
+      // 4. Update Profile with ALL URLs
       const updateData = {
           verification_status: 'submitted',
-          verification_nic_url: nicUrl,
+          verification_nic_url: nicFrontUrl,      // Using existing column for Front
+          verification_nic_back_url: nicBackUrl,  // New column for Back
           verification_license_url: licenseUrl
       };
 
@@ -102,7 +118,6 @@ export default function VerificationUpload() {
   };
 
   if (success) {
-      // ... (Keep existing Success UI)
       return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
         <motion.div 
@@ -115,7 +130,7 @@ export default function VerificationUpload() {
             </div>
             <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Documents Submitted!</h2>
             <p className="text-slate-500 dark:text-slate-400 mb-8">
-                We have received your NIC and License proofs. Our team will review them shortly.
+                We have received your NIC (Front & Back) and supporting documents. Our team will review them shortly.
             </p>
             <a href="/" className="block w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-colors">
                 Return to Home
@@ -127,7 +142,7 @@ export default function VerificationUpload() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-12 px-4 md:px-6 font-sans">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -159,7 +174,7 @@ export default function VerificationUpload() {
                     <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
                         <li className="flex items-start gap-2">
                             <Check size={16} className="text-emerald-500 mt-0.5" /> 
-                            <span className="font-bold">National Identity Card (NIC):</span> Required for everyone.
+                            <span className="font-bold">National Identity Card (NIC):</span> Both Front and Back images are required.
                         </li>
                         {licenseReq.required && (
                             <li className="flex items-start gap-2">
@@ -170,50 +185,99 @@ export default function VerificationUpload() {
                     </ul>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6 mb-8">
-                    {/* 1. NIC UPLOAD */}
-                    <div className="space-y-3">
-                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 ml-1">
-                            1. National Identity Card (NIC) <span className="text-red-500">*</span>
-                         </label>
-                         <label className="block w-full cursor-pointer group h-full">
-                            <div className={`h-48 border-3 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all ${
-                                nicFile 
-                                ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10' 
-                                : 'border-slate-200 dark:border-slate-600 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700'
-                            }`}>
-                                <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    accept="image/*,.pdf"
-                                    onChange={handleNicChange}
-                                />
-                                {nicFile ? (
-                                    <div className="animate-fade-in">
-                                        <FileText size={32} className="text-emerald-500 mx-auto mb-2" />
-                                        <p className="font-bold text-slate-800 dark:text-white text-sm truncate max-w-[150px]">{nicFile.name}</p>
-                                        <p className="text-[10px] text-emerald-600 font-bold uppercase mt-1">Ready</p>
+                <div className="space-y-8">
+                    {/* 1. NIC SECTION */}
+                    <div className="space-y-4">
+                         <div className="flex items-center gap-2 mb-2">
+                            <span className="bg-slate-900 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                            <label className="text-lg font-bold text-slate-800 dark:text-white">
+                                National Identity Card (NIC) <span className="text-red-500">*</span>
+                            </label>
+                         </div>
+                         
+                         <div className="grid md:grid-cols-2 gap-4">
+                             {/* Front Side */}
+                             <div className="space-y-2">
+                                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 ml-1">Front Side</span>
+                                <label className="block w-full cursor-pointer group h-full">
+                                    <div className={`h-40 border-3 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-all ${
+                                        nicFrontFile 
+                                        ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10' 
+                                        : 'border-slate-200 dark:border-slate-600 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700'
+                                    }`}>
+                                        <input 
+                                            type="file" 
+                                            className="hidden" 
+                                            accept="image/*,.pdf"
+                                            onChange={handleNicFrontChange}
+                                        />
+                                        {nicFrontFile ? (
+                                            <div className="animate-fade-in w-full">
+                                                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center mx-auto mb-2">
+                                                    <FileText size={20} className="text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                                <p className="font-bold text-slate-800 dark:text-white text-xs truncate w-full px-2">{nicFrontFile.name}</p>
+                                                <p className="text-[10px] text-emerald-600 font-bold uppercase mt-1">Front Ready</p>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div className="bg-slate-100 dark:bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-white transition-colors">
+                                                    <Upload size={18} className="text-slate-400 group-hover:text-amber-500" />
+                                                </div>
+                                                <p className="font-bold text-slate-600 dark:text-slate-300 text-xs">Upload Front</p>
+                                            </div>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div>
-                                        <div className="bg-slate-100 dark:bg-slate-700 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-white transition-colors">
-                                            <Upload size={20} className="text-slate-400 group-hover:text-amber-500" />
-                                        </div>
-                                        <p className="font-bold text-slate-600 dark:text-slate-300 text-sm">Upload NIC</p>
-                                        <p className="text-xs text-slate-400 mt-1">Front/Back Image</p>
+                                </label>
+                             </div>
+
+                             {/* Back Side */}
+                             <div className="space-y-2">
+                                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 ml-1">Back Side</span>
+                                <label className="block w-full cursor-pointer group h-full">
+                                    <div className={`h-40 border-3 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-all ${
+                                        nicBackFile 
+                                        ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10' 
+                                        : 'border-slate-200 dark:border-slate-600 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700'
+                                    }`}>
+                                        <input 
+                                            type="file" 
+                                            className="hidden" 
+                                            accept="image/*,.pdf"
+                                            onChange={handleNicBackChange}
+                                        />
+                                        {nicBackFile ? (
+                                            <div className="animate-fade-in w-full">
+                                                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center mx-auto mb-2">
+                                                    <FileText size={20} className="text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                                <p className="font-bold text-slate-800 dark:text-white text-xs truncate w-full px-2">{nicBackFile.name}</p>
+                                                <p className="text-[10px] text-emerald-600 font-bold uppercase mt-1">Back Ready</p>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div className="bg-slate-100 dark:bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-white transition-colors">
+                                                    <Upload size={18} className="text-slate-400 group-hover:text-amber-500" />
+                                                </div>
+                                                <p className="font-bold text-slate-600 dark:text-slate-300 text-xs">Upload Back</p>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        </label>
+                                </label>
+                             </div>
+                         </div>
                     </div>
 
                     {/* 2. LICENSE UPLOAD */}
-                    <div className="space-y-3">
-                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 ml-1">
-                            2. {licenseReq.title} {licenseReq.required && <span className="text-red-500">*</span>}
-                         </label>
+                    <div className="space-y-4">
+                         <div className="flex items-center gap-2 mb-2">
+                            <span className="bg-slate-900 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                             <label className="text-lg font-bold text-slate-800 dark:text-white">
+                                {licenseReq.title} {licenseReq.required && <span className="text-red-500">*</span>}
+                             </label>
+                         </div>
                          <label className="block w-full cursor-pointer group h-full">
-                            <div className={`h-48 border-3 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all ${
+                            <div className={`h-32 border-3 border-dashed rounded-2xl p-6 flex flex-row items-center justify-center gap-4 transition-all ${
                                 licenseFile 
                                 ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10' 
                                 : 'border-slate-200 dark:border-slate-600 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700'
@@ -225,18 +289,24 @@ export default function VerificationUpload() {
                                     onChange={handleLicenseChange}
                                 />
                                 {licenseFile ? (
-                                    <div className="animate-fade-in">
-                                        <FileText size={32} className="text-emerald-500 mx-auto mb-2" />
-                                        <p className="font-bold text-slate-800 dark:text-white text-sm truncate max-w-[150px]">{licenseFile.name}</p>
-                                        <p className="text-[10px] text-emerald-600 font-bold uppercase mt-1">Ready</p>
+                                    <div className="animate-fade-in flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center">
+                                            <FileText size={24} className="text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="font-bold text-slate-800 dark:text-white text-sm truncate max-w-[200px]">{licenseFile.name}</p>
+                                            <p className="text-[10px] text-emerald-600 font-bold uppercase">Ready to upload</p>
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div>
-                                        <div className="bg-slate-100 dark:bg-slate-700 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-white transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <div className="bg-slate-100 dark:bg-slate-700 w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-white transition-colors">
                                             <Upload size={20} className="text-slate-400 group-hover:text-amber-500" />
                                         </div>
-                                        <p className="font-bold text-slate-600 dark:text-slate-300 text-sm">Upload Proof</p>
-                                        <p className="text-xs text-slate-400 mt-1">License/Reg Certificate</p>
+                                        <div className="text-left">
+                                            <p className="font-bold text-slate-600 dark:text-slate-300 text-sm">Upload Proof Document</p>
+                                            <p className="text-xs text-slate-400">License, Registration, or Certificate</p>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -245,15 +315,15 @@ export default function VerificationUpload() {
                 </div>
 
                 {error && (
-                    <div className="p-4 bg-red-50 text-red-600 text-sm rounded-xl flex items-center gap-2 mb-6 border border-red-100">
+                    <div className="mt-8 p-4 bg-red-50 text-red-600 text-sm rounded-xl flex items-center gap-2 mb-6 border border-red-100">
                         <AlertCircle size={16} /> {error}
                     </div>
                 )}
 
                 <button 
                     onClick={handleUpload}
-                    disabled={uploading || !nicFile || (licenseReq.required && !licenseFile)}
-                    className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    disabled={uploading || !nicFrontFile || !nicBackFile || (licenseReq.required && !licenseFile)}
+                    className="w-full mt-8 bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                     {uploading ? 'Uploading Documents...' : 'Submit Verification Request'}
                 </button>

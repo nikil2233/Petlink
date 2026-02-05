@@ -4,19 +4,20 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
     MapPin, Camera, AlertTriangle, Send, X, Search, Phone, 
     Calendar, Clock, PawPrint, CheckCircle, FileText, Download, 
-    Share2, Eye, Shield, Lock, Unlock, Truck, Heart, Bell, ChevronLeft, ChevronRight, MessageCircle 
+    Share2, Eye, Shield, Lock, Unlock, Truck, Heart, Bell, ChevronLeft, ChevronRight, MessageCircle, Trash2 
 } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { motion } from 'framer-motion';
 import jsPDF from 'jspdf';
+import toast from 'react-hot-toast';
 
 
 export default function LostAndFound() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, session } = useAuth();
+  const { user, session, profile } = useAuth();
   const { openChat } = useChat();
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts', 'report'
   const [loading, setLoading] = useState(false);
@@ -296,7 +297,7 @@ export default function LostAndFound() {
           doc.save(`${petData.pet_name}_Flyer.pdf`);
       } catch(e) {
           console.error("Flyer generation failed", e);
-          alert("Could not auto-generate flyer. Please check console.");
+          toast.error("Could not auto-generate flyer. Please check console.");
       }
   };
 
@@ -420,6 +421,26 @@ export default function LostAndFound() {
       setSelectedPet(null);
   };
 
+  const deletePet = async (petId, e) => {
+    e.stopPropagation(); // prevent opening detail modal
+    if (!confirm("Are you sure you want to delete this report?")) return;
+
+    try {
+        const { error } = await supabase
+          .from('lost_pets')
+          .delete()
+          .eq('id', petId);
+
+        if (error) throw error;
+
+        setLostPets(prev => prev.filter(p => p.id !== petId));
+        if (selectedPet && selectedPet.id === petId) setSelectedPet(null);
+    } catch (err) {
+        console.error("Error deleting pet:", err);
+        toast.error("Failed to delete report.");
+    }
+  };
+
 
 
   // --- SUCCESS MODAL STATE (Restored) ---
@@ -442,7 +463,7 @@ export default function LostAndFound() {
 
   const submitPickupSchedule = async () => {
       if (!pickupDate || !pickupTime) {
-          alert("Please select both a date and time.");
+          toast.error("Please select both a date and time.");
           return;
       }
 
@@ -504,7 +525,7 @@ export default function LostAndFound() {
 
       } catch (err) {
           console.error("Error scheduling pickup:", err);
-          alert("Failed to schedule pickup. Please try again.");
+          toast.error("Failed to schedule pickup. Please try again.");
       }
   };
 
@@ -1312,6 +1333,17 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                     </span>
                                 )}
                             </div>
+                            
+                            {/* Admin/Owner Delete Button */}
+                            {(profile?.is_admin || (user && user.id === pet.owner_id)) && (
+                                <button 
+                                    onClick={(e) => deletePet(pet.id, e)}
+                                    className="absolute top-4 right-4 z-10 p-2 bg-white/90 text-red-500 rounded-full shadow-lg hover:bg-red-500 hover:text-white transition-colors"
+                                    title="Delete Report"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
                         </div>
                         <div className="p-6">
                             <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">{pet.pet_name}</h3>

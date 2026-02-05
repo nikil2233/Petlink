@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Camera, PenTool, X, Send, Award, Calendar, Trash2, Star, Sparkles } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Camera, PenTool, X, Send, Award, Calendar, Trash2, Star, Sparkles, BadgeCheck } from 'lucide-react';
 import { AnimatedDog, AnimatedCat, AnimatedParrot } from '../components/AnimatedPets';
 
 const DEFAULT_IMAGES = [
@@ -14,7 +14,7 @@ const DEFAULT_IMAGES = [
 ];
 
 export default function SuccessStories() {
-  const { user, role } = useAuth();
+  const { user, role, profile } = useAuth();
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -164,6 +164,24 @@ export default function SuccessStories() {
           }));
       } catch (err) {
           console.error("Error deleting comment:", err);
+      }
+  };
+
+  const deleteStory = async (storyId) => {
+      if (!confirm("Are you sure you want to delete this story?")) return;
+
+      try {
+          const { error } = await supabase
+            .from('success_stories')
+            .delete()
+            .eq('id', storyId);
+
+          if (error) throw error;
+
+          setStories(prev => prev.filter(s => s.id !== storyId));
+      } catch (err) {
+          console.error("Error deleting story:", err);
+          alert("Failed to delete story.");
       }
   };
 
@@ -507,7 +525,10 @@ export default function SuccessStories() {
                                   )}
                               </div>
                               <div>
-                                  <h3 className="font-bold text-slate-800 dark:text-white">{story.author?.full_name || 'Unknown Helper'}</h3>
+                                  <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-1">
+                                      {story.author?.full_name || 'Unknown Helper'}
+                                      {story.author?.is_verified && <BadgeCheck size={16} className="text-blue-500 fill-blue-50" />}
+                                  </h3>
                                   <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">
                                       <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">{story.author?.role || 'Rescuer'}</span>
                                       <span>•</span>
@@ -566,6 +587,19 @@ export default function SuccessStories() {
                                       <Share2 size={20} />
                                   </div>
                               </button>
+
+                              {/* DELETE BUTTON FOR ADMINS OR AUTHOR */}
+                              {(profile?.is_admin || (user && user.id === story.author_id)) && (
+                                  <button 
+                                      onClick={() => deleteStory(story.id)}
+                                      className="flex items-center gap-2 text-slate-400 hover:text-red-500 transition-colors group"
+                                      title="Delete Story"
+                                  >
+                                      <div className="p-2 rounded-full group-hover:bg-red-50 dark:group-hover:bg-red-900/20 transition-colors">
+                                          <Trash2 size={20} />
+                                      </div>
+                                  </button>
+                              )}
                           </div>
 
                           {/* Comments Section */}

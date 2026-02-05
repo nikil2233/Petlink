@@ -25,11 +25,16 @@ import SuccessStories from './pages/SuccessStories';
 
 import UserProfile from './pages/UserProfile';
 import VerificationUpload from './pages/VerificationUpload';
+import AdminDashboard from './pages/AdminDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 import ChatDrawer from './components/ChatDrawer';
+
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
     <Router>
+      <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
       <Navbar />
       <ChatDrawer />
       <Routes>
@@ -50,6 +55,14 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/lost-and-found" element={<LostAndFound />} />
         <Route path="/verify-account" element={<VerificationUpload />} />
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
       <Footer />
     </Router>

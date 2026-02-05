@@ -6,7 +6,7 @@ import {
   Menu, X, Heart, LogOut, Stethoscope, 
   MapPin, Calendar, ChevronDown, Bell, 
   PawPrint, Home, Megaphone, Activity, 
-  User, Dog, AlertTriangle, Clipboard, MessageCircle, Shield
+  User, Dog, AlertTriangle, Clipboard, MessageCircle, Shield, BadgeCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '../context/ChatContext';
@@ -137,6 +137,10 @@ export default function Navbar() {
           {userRole === 'vet' && (
              <NavPill to="/vet-appointments" active={isActive('/vet-appointments')} icon={Stethoscope}>Dashboard</NavPill>
           )}
+
+          {profile?.is_admin && (
+             <NavPill to="/admin" active={isActive('/admin')} icon={Shield}>Admin</NavPill>
+          )}
         </div>
 
         {/* RIGHT SIDE ACTIONS */}
@@ -227,6 +231,11 @@ export default function Navbar() {
                             <img src={user.avatar_url} alt="User" className="w-full h-full object-cover" />
                         ) : (
                             <User size={18} />
+                        )}
+                        {profile?.is_verified && (
+                            <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-900 rounded-full p-0.5">
+                                <BadgeCheck size={14} className="text-blue-500 fill-blue-50" />
+                            </div>
                         )}
                    </Link>
 

@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, AlertTriangle, CheckCircle2, Clock, XCircle, HeartHandshake, Shield, Activity, Calendar, Siren, PawPrint, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const SkeletonCard = () => (
     <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col h-full animate-pulse transition-colors duration-300">
@@ -61,15 +62,20 @@ export default function RescuerFeed() {
   const checkUserRole = async (userId) => {
       const { data, error } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, is_admin')
           .eq('id', userId)
           .single();
       
       if (data) {
+          if (data.is_admin) {
+              fetchReports(userId, true);
+              return;
+          }
+
           if (!['rescuer', 'shelter', 'vet'].includes(data.role)) {
               setAccessDenied(true);
           } else {
-              fetchReports(userId);
+              fetchReports(userId, false);
           }
       }
   };
@@ -105,19 +111,24 @@ export default function RescuerFeed() {
       );
   }
 
-  const fetchReports = async (userId) => {
+  const fetchReports = async (userId, isAdmin = false) => {
     try {
       setLoading(true);
       
-      // Fetch reports assigned to this rescuer
-      const { data, error } = await supabase
+      let query = supabase
         .from('reports')
         .select(`
           *,
           profiles:profiles!reports_user_id_fkey (full_name, avatar_url, phone:id)
         `)
-        .eq('assigned_rescuer_id', userId)
         .order('created_at', { ascending: false });
+
+      // If NOT admin, only show assigned reports
+      if (!isAdmin) {
+          query = query.eq('assigned_rescuer_id', userId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setReports(data || []);
@@ -149,7 +160,7 @@ export default function RescuerFeed() {
 
       } catch (err) {
           console.error("Error updating status:", err);
-          alert("Failed to update status. Please try again.");
+          toast.error("Failed to update status. Please try again.");
       }
   };
 
@@ -174,7 +185,7 @@ export default function RescuerFeed() {
 
   const confirmPickup = async () => {
       if (!pickupDate || !pickupTime) {
-          alert("Please select both date and time.");
+          toast.error("Please select both date and time.");
           return;
       }
 
@@ -212,7 +223,7 @@ export default function RescuerFeed() {
           setSuccessMsg("Pickup scheduled successfully! We've notified the reporter.");
       } catch (err) {
           console.error("Error scheduling pickup:", err);
-          alert("Failed to confirm pickup. Please try again.");
+          toast.error("Failed to confirm pickup. Please try again.");
       } finally {
           setLoading(false);
       }

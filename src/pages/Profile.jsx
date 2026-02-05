@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
     User, MapPin, Mail, Save, Building, Stethoscope, 
     HeartHandshake, Camera, FileText, Target, Lock, Shield, 
-    CheckCircle, AlertCircle, Edit2 
+    CheckCircle, AlertCircle, Edit2, BadgeCheck
 } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 
@@ -289,8 +289,11 @@ export default function Profile() {
                             {getRoleIcon(profile.role)}
                             {getRoleLabel(profile.role)}
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white mb-2">
+                        <h1 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white mb-2 flex items-center gap-2 justify-center md:justify-start">
                             {profile.full_name || 'Your Name'}
+                            {profile.is_verified && (
+                                <BadgeCheck size={32} className="text-blue-500 fill-blue-50 dark:fill-blue-900/30" />
+                            )}
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 text-lg max-w-lg">
                             {profile.about || 'Tell the community about yourself...'}
