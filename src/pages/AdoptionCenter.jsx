@@ -378,6 +378,7 @@ function PetCard({ animal, isWishlisted, onToggleWishlist, onClick }) {
                 <img 
                     src={animal.image_url || `https://source.unsplash.com/400x300/?${animal.species}`} 
                     alt={animal.name}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 

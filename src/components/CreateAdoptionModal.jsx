@@ -5,6 +5,7 @@ import {
     MapPin, Calendar, Heart, Share2, Activity, ArrowRight,
     AlignLeft
 } from 'lucide-react';
+import { compressImage } from '../utils/imageUtils';
 
 export default function CreateAdoptionModal({ isOpen, onClose, onCreated, session }) {
   const [loading, setLoading] = useState(false);
@@ -50,14 +51,21 @@ export default function CreateAdoptionModal({ isOpen, onClose, onCreated, sessio
   };
 
   const uploadImage = async (file) => {
-    const fileExt = file.name.split('.').pop();
+    let fileToUpload = file;
+    try {
+        fileToUpload = await compressImage(file);
+    } catch (e) {
+        console.error("Compression failed:", e);
+    }
+
+    const fileExt = fileToUpload.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${fileName}`;
     
     // Attempt upload
     const { error: uploadError } = await supabase.storage
       .from('adoption-images')
-      .upload(filePath, file);
+      .upload(filePath, fileToUpload);
 
     if (uploadError) throw uploadError;
 

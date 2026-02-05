@@ -5,6 +5,7 @@ import { MapPin, Camera, AlertTriangle, Send, X, Shield, Info, Heart, Upload, Na
 import MapPicker from '../components/MapPicker';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { compressImage } from '../utils/imageUtils';
 
 export default function NotifyRescuer() {
   const navigate = useNavigate();
@@ -148,13 +149,20 @@ export default function NotifyRescuer() {
   };
 
   const uploadImage = async (file) => {
-    const fileExt = file.name.split('.').pop();
+    let fileToUpload = file;
+    try {
+        fileToUpload = await compressImage(file);
+    } catch (e) {
+        console.error("Compression failed:", e);
+    }
+
+    const fileExt = fileToUpload.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${fileName}`;
 
     const { error } = await supabase.storage
       .from('rescue-images')
-      .upload(filePath, file);
+      .upload(filePath, fileToUpload);
 
     if (error) throw error;
 

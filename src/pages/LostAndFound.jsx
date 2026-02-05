@@ -12,6 +12,7 @@ import { useChat } from '../context/ChatContext';
 import { motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 import toast from 'react-hot-toast';
+import { compressImage } from '../utils/imageUtils';
 
 
 export default function LostAndFound() {
@@ -240,11 +241,20 @@ export default function LostAndFound() {
   const uploadImages = async (imagesToUpload) => {
       const urls = [];
       for (const img of imagesToUpload) {
-          const fileExt = img.file.name.split('.').pop();
+          let fileToUpload = img.file;
+          try {
+              console.log(`Compressing ${fileToUpload.name}...`);
+              fileToUpload = await compressImage(img.file);
+              console.log(`Compressed to ${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`);
+          } catch (e) {
+              console.error("Compression failed, uploading original:", e);
+          }
+
+          const fileExt = fileToUpload.name.split('.').pop();
           const fileName = `${Math.random()}.${fileExt}`;
           const filePath = `${fileName}`;
           
-          const { error } = await supabase.storage.from('lost-pets').upload(filePath, img.file);
+          const { error } = await supabase.storage.from('lost-pets').upload(filePath, fileToUpload);
           if (error) {
               console.error("Upload error", error);
               continue;
@@ -603,11 +613,18 @@ export default function LostAndFound() {
           // 1. Upload Image if exists
           let imageUrl = null;
           if (sightingImage) {
-              const fileExt = sightingImage.name.split('.').pop();
+              let fileToUpload = sightingImage;
+              try {
+                  fileToUpload = await compressImage(sightingImage);
+              } catch (e) {
+                  console.error("Compression failed:", e);
+              }
+
+              const fileExt = fileToUpload.name.split('.').pop();
               const fileName = `sighting_${Date.now()}.${fileExt}`;
               const { error: uploadError } = await supabase.storage
                   .from('lost-pets')
-                  .upload(fileName, sightingImage);
+                  .upload(fileName, fileToUpload);
               
               if (uploadError) throw uploadError;
 
@@ -694,11 +711,18 @@ export default function LostAndFound() {
           // 1. Upload Proof Image (if any)
           let proofImageUrl = "No image provided";
           if (claimImage) {
-              const fileExt = claimImage.name.split('.').pop();
+              let fileToUpload = claimImage;
+              try {
+                  fileToUpload = await compressImage(claimImage);
+              } catch (e) {
+                  console.error("Compression failed:", e);
+              }
+
+              const fileExt = fileToUpload.name.split('.').pop();
               const fileName = `${Date.now()}_proof.${fileExt}`;
               const { error: uploadError } = await supabase.storage
                   .from('lost-pets') // FIXED: Using correct bucket 'lost-pets'
-                  .upload(fileName, claimImage);
+                  .upload(fileName, fileToUpload);
 
               if (uploadError) throw uploadError;
               

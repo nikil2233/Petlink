@@ -7,6 +7,7 @@ import {
     CheckCircle, AlertCircle, Edit2, BadgeCheck
 } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
+import { compressImage } from '../utils/imageUtils';
 
 export default function Profile() {
   const [loading, setLoading] = useState(true);
@@ -97,7 +98,14 @@ export default function Profile() {
   };
 
   const uploadAvatar = async (file) => {
-    const fileExt = file.name.split('.').pop();
+    let fileToUpload = file;
+    try {
+        fileToUpload = await compressImage(file, 800); // Smaller for avatar
+    } catch (e) {
+        console.error("Compression failed:", e);
+    }
+
+    const fileExt = fileToUpload.name.split('.').pop();
     const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
     const filePath = `${fileName}`;
     
@@ -106,7 +114,7 @@ export default function Profile() {
     // Attempt upload
     const { error: uploadError } = await supabase.storage
       .from(bucket)
-      .upload(filePath, file, { upsert: true });
+      .upload(filePath, fileToUpload, { upsert: true });
 
     if (uploadError) {
        console.warn("Upload to 'avatars' failed", uploadError);

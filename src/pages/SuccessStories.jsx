@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Camera, PenTool, X, Send, Award, Calendar, Trash2, Star, Sparkles, BadgeCheck } from 'lucide-react';
 import { AnimatedDog, AnimatedCat, AnimatedParrot } from '../components/AnimatedPets';
+import { compressImage } from '../utils/imageUtils';
 
 const DEFAULT_IMAGES = [
   "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80",
@@ -194,13 +195,20 @@ export default function SuccessStories() {
   };
 
   const uploadImage = async (file) => {
-    const fileExt = file.name.split('.').pop();
+    let fileToUpload = file;
+    try {
+        fileToUpload = await compressImage(file);
+    } catch (e) {
+        console.error("Compression failed:", e);
+    }
+
+    const fileExt = fileToUpload.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('story-images')
-      .upload(filePath, file);
+      .upload(filePath, fileToUpload);
 
     if (uploadError) throw uploadError;
 
@@ -542,6 +550,7 @@ export default function SuccessStories() {
                               <img 
                                 src={story.image_url || DEFAULT_IMAGES[index % DEFAULT_IMAGES.length]} 
                                 alt={story.title} 
+                                loading="lazy"
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
