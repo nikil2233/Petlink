@@ -34,7 +34,17 @@ import { Toaster } from 'react-hot-toast';
 function App() {
   return (
     <Router>
-      <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+      <Toaster 
+        position="top-center" 
+        toastOptions={{ 
+          duration: 3000,
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+          className: 'dark:bg-slate-800 dark:text-white',
+        }} 
+      />
       <Navbar />
       <ChatDrawer />
       <Routes>

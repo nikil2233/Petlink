@@ -221,13 +221,13 @@ export default function Navbar() {
                                                     }}
                                                     className="p-4 border-b border-slate-50 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                                                >
-                                                   <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">{n.message}</p>
-                                                   <span className="text-xs text-slate-400">{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                   <p className="text-sm text-slate-600 dark:text-slate-100 mb-1 font-medium">{n.message}</p>
+                                                   <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                </div>
                                            ))
                                        )}
                                    </div>
-                                   <Link to="/notifications" onClick={() => setShowNotifications(false)} className="block p-3 text-center text-rose-500 hover:bg-slate-50 dark:hover:bg-slate-700 font-bold text-sm bg-slate-50/50 dark:bg-slate-900/50">
+                                   <Link to="/notifications" onClick={() => setShowNotifications(false)} className="block p-3 text-center text-rose-500 hover:bg-slate-50 dark:hover:bg-slate-700 font-bold text-sm bg-slate-50/50 dark:bg-slate-900/50 dark:border-t dark:border-slate-700">
                                        View All
                                    </Link>
                                </motion.div>
