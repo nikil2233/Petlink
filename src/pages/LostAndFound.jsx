@@ -433,7 +433,17 @@ export default function LostAndFound() {
 
   const deletePet = async (petId, e) => {
     e.stopPropagation(); // prevent opening detail modal
-    if (!confirm("Are you sure you want to delete this report?")) return;
+    setDeleteConfirmation({ isOpen: true, petId });
+  };
+
+  // --- DELETE CONFIRMATION STATE ---
+  const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, petId: null });
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation.petId) return;
+    
+    const petId = deleteConfirmation.petId;
+    setDeleteConfirmation({ isOpen: false, petId: null }); // Close immediately to avoid flicker
 
     try {
         const { error } = await supabase
@@ -445,6 +455,7 @@ export default function LostAndFound() {
 
         setLostPets(prev => prev.filter(p => p.id !== petId));
         if (selectedPet && selectedPet.id === petId) setSelectedPet(null);
+        toast.success("Report deleted successfully.");
     } catch (err) {
         console.error("Error deleting pet:", err);
         toast.error("Failed to delete report.");
@@ -782,6 +793,30 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
       setSuccessPayload(null);
       setSuccessImage(null);
       
+      // Reset Form State
+      setPetName('');
+      setSpecies('Dog');
+      setBreed('');
+      setGender('Unknown');
+      setSize('Medium');
+      setPrimaryColor('');
+      setSecondaryColor('');
+      setCoatType('');
+      setDistinctiveFeatures('');
+      setImages([]);
+      setLastSeenDate('');
+      setLastSeenTime('');
+      setLocationName('');
+      setCoords(null);
+      setTemperament('Friendly');
+      setContactPhone('');
+      setHideContact(false);
+      setCustodyStatus('user_holding');
+      setSelectedRescuer('');
+      setIsInjured(false);
+      setInjuryDetails('');
+      setInjuryImages([]);
+      
       // Navigate / Reset
       setActiveTab('alerts');
       fetchLostPets();
@@ -812,12 +847,19 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
     :is(.dark) .input-field {
         background: rgba(15, 23, 42, 0.6);
         border-color: #334155;
-        color: #f8fafc;
+        color: #f8fafc; /* Ensure text is light/white in dark mode */
+    }
+    :is(.dark) .input-field::placeholder {
+        color: #94a3b8; /* Make placeholder visible but lighter */
     }
     .input-field:focus {
         background: white;
         border-color: #f43f5e;
         box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.1);
+    }
+    :is(.dark) .input-field:focus {
+        background: rgba(30, 41, 59, 0.8); /* Keep background dark on focus */
+        color: white;
     }
   `;
 
@@ -2005,6 +2047,37 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                     >
                        See Reunited Pets
                    </button>
+               </div>
+          </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteConfirmation.isOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+               <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-8 max-w-sm w-full shadow-2xl text-center border border-slate-100 dark:border-slate-700 transform transition-all scale-100">
+                   <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                       <Trash2 size={32} />
+                   </div>
+                   
+                   <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Delete Report?</h3>
+                   <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">
+                       Are you sure you want to delete this report? This action cannot be undone.
+                   </p>
+                   
+                   <div className="grid grid-cols-2 gap-3">
+                       <button 
+                            onClick={() => setDeleteConfirmation({ isOpen: false, petId: null })}
+                            className="py-3 rounded-xl font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        >
+                           Cancel
+                       </button>
+                       <button 
+                            onClick={confirmDelete}
+                            className="py-3 rounded-xl bg-red-500 text-white font-bold shadow-lg shadow-red-200 hover:bg-red-600 transition-all active:scale-95"
+                        >
+                           Delete
+                       </button>
+                   </div>
                </div>
           </div>
       )}
