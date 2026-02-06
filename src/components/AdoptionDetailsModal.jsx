@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { X, Heart, MapPin, Shield, Info, CheckCircle, AlertCircle, ChevronLeft } from 'lucide-react';
+import { useChat } from '../context/ChatContext';
+import { X, Heart, MapPin, Shield, Info, CheckCircle, AlertCircle, ChevronLeft, MessageCircle } from 'lucide-react';
 
 export default function AdoptionDetailsModal({ animal, isOpen, onClose, session }) {
+  const { openChat } = useChat();
   const [view, setView] = useState('details'); // 'details' or 'apply'
   const [appLoading, setAppLoading] = useState(false);
   const [appSuccess, setAppSuccess] = useState(false);
@@ -197,6 +199,18 @@ export default function AdoptionDetailsModal({ animal, isOpen, onClose, session 
                             <div className="text-center mt-4 text-xs text-muted">
                                 Posted by: {animal.posted_by === session?.user?.id ? 'You' : 'Owner/Shelter'}
                             </div>
+
+                            {session && animal.posted_by !== session.user.id && (
+                                <button 
+                                    onClick={() => {
+                                        onClose();
+                                        openChat(animal.posted_by);
+                                    }}
+                                    className="btn btn-secondary w-full justify-center mt-3 flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700"
+                                >
+                                    <MessageCircle size={18} /> Message Owner
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

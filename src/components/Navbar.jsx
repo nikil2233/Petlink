@@ -146,13 +146,23 @@ export default function Navbar() {
         {/* RIGHT SIDE ACTIONS */}
         <div className="flex items-center gap-3">
             {/* Verification Warning (For Pro Roles) */}
+            {/* Verification Warning (For Pro Roles) */}
             {['vet', 'rescuer', 'shelter'].includes(userRole) && profile && !profile.is_verified && (
-                <Link 
-                    to="/verify-account"
-                    className="hidden md:flex items-center gap-2 bg-amber-500/10 text-amber-600 dark:text-amber-500 px-3 py-1.5 rounded-full text-xs font-bold ring-1 ring-amber-500/20 hover:bg-amber-500 hover:text-white transition-all"
-                >
-                    <AlertTriangle size={14} /> Verify Account
-                </Link>
+                profile.verification_status === 'submitted' ? (
+                    <Link 
+                        to="/verify-account"
+                        className="hidden md:flex items-center gap-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-full text-xs font-bold ring-1 ring-blue-500/20 hover:bg-blue-500 hover:text-white transition-all"
+                    >
+                        <Activity size={14} className="animate-pulse" /> Verification Pending
+                    </Link>
+                ) : (
+                    <Link 
+                        to="/verify-account"
+                        className="hidden md:flex items-center gap-2 bg-amber-500/10 text-amber-600 dark:text-amber-500 px-3 py-1.5 rounded-full text-xs font-bold ring-1 ring-amber-500/20 hover:bg-amber-500 hover:text-white transition-all"
+                    >
+                        <AlertTriangle size={14} /> Verify Account
+                    </Link>
+                )
             )}
             {session ? (
                 <>

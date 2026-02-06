@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { 
-    X, Upload, Camera, Save, Dog, Cat, Info, Check, 
+    X, Upload, Camera, Save, Dog, Cat, Bird, Rabbit, Info, Check, 
     MapPin, Calendar, Heart, Share2, Activity, ArrowRight,
     AlignLeft
 } from 'lucide-react';
@@ -91,6 +91,8 @@ export default function CreateAdoptionModal({ isOpen, onClose, onCreated, sessio
         .from('adoptions')
         .insert([{
           ...formData,
+          age_years: formData.age_years === '' ? 0 : parseInt(formData.age_years),
+          age_months: formData.age_months === '' ? 0 : parseInt(formData.age_months),
           image_url: imageUrl,
           posted_by: session.user.id,
           status: 'available'
@@ -243,6 +245,20 @@ export default function CreateAdoptionModal({ isOpen, onClose, onCreated, sessio
                                         className={`flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${formData.species === 'cat' ? 'bg-white text-pink-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
                                         <Cat size={16} /> Cat
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setFormData(p => ({...p, species: 'bird'}))}
+                                        className={`flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${formData.species === 'bird' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        <Bird size={16} /> Bird
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setFormData(p => ({...p, species: 'rabbit'}))}
+                                        className={`flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${formData.species === 'rabbit' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        <Rabbit size={16} /> Rabbit
                                     </button>
                                 </div>
                             </div>

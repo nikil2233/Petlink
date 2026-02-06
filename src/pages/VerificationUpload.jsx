@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { Upload, Check, AlertCircle, Shield, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function VerificationUpload() {
-  const { user, role: userRole, refreshProfile } = useAuth(); // role is enough, no need for userRole alias technically but reusing
+  const { user, role: userRole, profile, refreshProfile } = useAuth(); // role is enough, no need for userRole alias technically but reusing
   
   // State for Files
   const [nicFrontFile, setNicFrontFile] = useState(null);
@@ -15,6 +15,12 @@ export default function VerificationUpload() {
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (profile?.verification_status === 'submitted') {
+        setSuccess(true);
+    }
+  }, [profile]);
 
   // Helper to determine second document requirements
   const getLicenseRequirement = () => {

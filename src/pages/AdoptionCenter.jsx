@@ -224,6 +224,18 @@ export default function AdoptionCenter() {
                 active={filterType === 'cat'} 
                 onClick={() => setFilterType('cat')} 
             />
+            <CategoryCircle 
+                icon={<span className="text-3xl">🐦</span>} 
+                label="Birds" 
+                active={filterType === 'bird'} 
+                onClick={() => setFilterType('bird')} 
+            />
+            <CategoryCircle 
+                icon={<span className="text-3xl">🐰</span>} 
+                label="Rabbits" 
+                active={filterType === 'rabbit'} 
+                onClick={() => setFilterType('rabbit')} 
+            />
              {/* Wishlist */}
              <CategoryCircle 
                 icon={<Heart size={24} className={showWishlistOnly ? "fill-current" : ""} />} 
@@ -272,12 +284,14 @@ export default function AdoptionCenter() {
       </div>
 
       {/* Modals */}
-      <CreateAdoptionModal 
-        isOpen={showCreateModal} 
-        onClose={() => setShowCreateModal(false)} 
-        onCreated={() => { fetchAnimals(); setShowCreateModal(false); }}
-        session={session}
-      />
+      {showCreateModal && (
+        <CreateAdoptionModal 
+            isOpen={showCreateModal} 
+            onClose={() => setShowCreateModal(false)} 
+            onCreated={() => { fetchAnimals(); setShowCreateModal(false); }}
+            session={session}
+        />
+      )}
 
       <AdoptionDetailsModal 
         animal={selectedAnimal} 
