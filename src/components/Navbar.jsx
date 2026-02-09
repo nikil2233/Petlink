@@ -106,7 +106,11 @@ export default function Navbar() {
           <NavPill to="/" active={isActive('/')} icon={Home}>Home</NavPill>
           <NavPill to="/notify" active={isActive('/notify')} icon={Megaphone}>Notify</NavPill>
           <NavPill to="/lost-and-found" active={isActive('/lost-and-found')} icon={AlertTriangle}>Lost & Found</NavPill>
-          <NavPill to="/rescuer-feed" active={isActive('/rescuer-feed')} icon={Activity}>Rescuer Feed</NavPill>
+          {userRole === 'shelter' ? (
+              <NavPill to="/shelter-dashboard" active={isActive('/shelter-dashboard')} icon={Home}>Dashboard</NavPill>
+          ) : (
+              <NavPill to="/rescuer-feed" active={isActive('/rescuer-feed')} icon={Activity}>Rescuer Feed</NavPill>
+          )}
           <NavPill to="/success-stories" active={isActive('/success-stories')} icon={Heart}>Success Stories</NavPill>
           
           {['rescuer', 'shelter', 'vet'].includes(userRole) ? (
@@ -138,7 +142,7 @@ export default function Navbar() {
              <NavPill to="/vet-appointments" active={isActive('/vet-appointments')} icon={Stethoscope}>Dashboard</NavPill>
           )}
 
-          {profile?.is_admin && (
+          {userRole === 'admin' && (
              <NavPill to="/admin" active={isActive('/admin')} icon={Shield}>Admin</NavPill>
           )}
         </div>

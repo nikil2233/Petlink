@@ -62,6 +62,7 @@ export default function LostAndFound() {
 
   // E. Founder Specifics (Custody & Health)
   const [custodyStatus, setCustodyStatus] = useState('user_holding'); // 'user_holding', 'rescuer_notified'
+  const [helpRequest, setHelpRequest] = useState('none'); // 'none', 'rescuer', 'shelter'
   const [selectedRescuer, setSelectedRescuer] = useState('');
   const [isInjured, setIsInjured] = useState(false);
   const [injuryDetails, setInjuryDetails] = useState('');
@@ -185,6 +186,92 @@ export default function LostAndFound() {
       }
   };
 
+  // Handle marking as reunited
+  // Handle marking as reunited
+  const markAsReunited = (petId) => {
+      toast((t) => (
+          <div className="flex flex-col gap-3">
+            <span className="font-bold text-slate-800">Has this pet been reunited?</span>
+            <p className="text-xs text-slate-500">This will close the search and move the report to the Reunited tab.</p>
+            <div className="flex gap-2 mt-1">
+              <button 
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  confirmReunited(petId);
+                }}
+                className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-green-600 transition-colors"
+              >
+                Yes, Reunited!
+              </button>
+              <button 
+                onClick={() => toast.dismiss(t.id)}
+                className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-sm font-bold transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+      ), { duration: 6000 });
+  };
+
+  const confirmReunited = async (petId) => {
+      const toastId = toast.loading('Updating status...');
+      try {
+          // 1. Fetch pet details to match with reports
+          // Note: lost_pets uses 'owner_id', reports uses 'user_id'
+          const { data: petData, error: fetchError } = await supabase
+              .from('lost_pets')
+              .select('image_url, owner_id') 
+              .eq('id', petId)
+              .single();
+
+          if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+          // 2. Update lost_pets status
+          const { error } = await supabase
+              .from('lost_pets')
+              .update({ 
+                  status: 'reunited', 
+                  updated_at: new Date().toISOString(),
+                  custody_status: null,     // Clear custody status
+                  custody_rescuer_id: null,
+                  pickup_date: null,        // Clear schedule details
+                  pickup_time: null,
+                  pickup_note: null
+              })
+              .eq('id', petId);
+
+          if (error) throw error;
+          
+          // 3. Close related reports (active rescue/shelter requests)
+          // Use owner_id from lost_pets to match user_id in reports
+          if (petData) {
+              let query = supabase
+                  .from('reports')
+                  .update({ status: 'completed' }) // Marks as completed so it drops from feed
+                  .eq('user_id', petData.owner_id)
+                  .neq('status', 'completed');
+              
+              // If image exists, match it. Otherwise, match types to be safe.
+              if (petData.image_url) {
+                  query = query.eq('image_url', petData.image_url);
+              } else {
+                  query = query.in('type', ['rescuer_req', 'shelter_req']);
+              }
+
+              const { error: reportError } = await query;
+              if (reportError) console.error("Error closing related report:", reportError);
+          }
+          
+          toast.success("Wonderful news! Pet marked as Reunited.", { id: toastId });
+          setSelectedPet(null); // Close modal
+          setTimeout(() => fetchLostPets(), 1000);
+      } catch (err) {
+          console.error("Error marking reunited:", err);
+          toast.error("Failed to update status. " + err.message, { id: toastId });
+      }
+  };
+
   const fetchLostPets = async () => {
     try {
         let query = supabase
@@ -192,13 +279,17 @@ export default function LostAndFound() {
             .select('*')
             .order('created_at', { ascending: false });
 
+        // Build query based on active tab
         if (activeTab === 'reunited') {
-             const fiveDaysAgo = new Date();
-             fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+             // Show only reunited pets from last 30 days (increased from 5 for visibility)
+             const pastDate = new Date();
+             pastDate.setDate(pastDate.getDate() - 30);
+             
              query = query
                 .eq('status', 'reunited')
-                .gt('updated_at', fiveDaysAgo.toISOString());
+                .gt('updated_at', pastDate.toISOString());
         } else {
+             // Show everything EXCEPT reunited
              query = query.neq('status', 'reunited');
         }
         
@@ -377,6 +468,24 @@ export default function LostAndFound() {
         const { data, error } = await supabase.from('lost_pets').insert([payload]).select();
 
         if (error) throw error;
+
+        // --- NEW: Handle Help Requests (Broadcast to Feed) ---
+        if (reportType === 'found' && helpRequest !== 'none') {
+            const reportPayload = {
+                user_id: session?.user?.id,
+                type: helpRequest === 'rescuer' ? 'rescuer_req' : 'shelter_req', // 'rescuer_req' or 'shelter_req'
+                description: `[Found Pet Help] ${distinctiveFeatures || 'Found Pet'}. Help needed holding this animal.`,
+                location: locationName,
+                latitude: coords ? coords.lat : null,
+                longitude: coords ? coords.lng : null,
+                image_url: mainImage,
+                status: 'pending',
+                assigned_rescuer_id: null // Broadcast
+            };
+
+            const { error: repError } = await supabase.from('reports').insert([reportPayload]);
+            if (repError) console.error("Error creating help report:", repError);
+        }
 
         // Offer Flyer via Modal instead of native prompt
         setSuccessPayload(payload);
@@ -1122,11 +1231,11 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                 )}
 
                                 {/* OWNER ACTIONS */}
-                                {session?.user?.id === selectedPet.owner_id && (
+                                {session?.user?.id === selectedPet.owner_id && selectedPet.status !== 'reunited' && (
                                     <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
                                         <p className="text-xs font-bold text-slate-400 uppercase text-center mb-3">Owner Actions</p>
                                         <button 
-                                            onClick={() => handleMarkReunitedFromModal(selectedPet.id)}
+                                            onClick={() => markAsReunited(selectedPet.id)}
                                             className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-200 transition-all hover:-translate-y-1"
                                         >
                                             <CheckCircle size={20} /> Mark as Reunited
@@ -1612,10 +1721,7 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                         <div 
                                             onClick={(e) => { 
                                                 e.stopPropagation(); 
-                                                if (cameraInputRef.current) {
-                                                    cameraInputRef.current.setAttribute('capture', 'environment');
-                                                    cameraInputRef.current.click(); 
-                                                }
+                                                cameraInputRef.current?.click(); 
                                             }}
                                             className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-50 hover:border-orange-400 transition-colors group"
                                         >
@@ -1625,10 +1731,7 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                         <div 
                                             onClick={(e) => { 
                                                 e.stopPropagation(); 
-                                                if (fileInputRef.current) {
-                                                    fileInputRef.current.removeAttribute('capture');
-                                                    fileInputRef.current.click(); 
-                                                }
+                                                fileInputRef.current?.click(); 
                                             }}
                                             className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors group"
                                         >
@@ -1639,7 +1742,7 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                 )}
                             </div>
                             <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleImageChange} />
-                            <input ref={cameraInputRef} type="file" multiple accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
+                            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
                         </div>
                     </Section>
 
@@ -1713,54 +1816,56 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                         <div className="bg-white/60 backdrop-blur-sm p-6 rounded-2xl border border-white/80 shadow-sm">
                             <h3 className="text-lg font-black text-slate-800 mb-6 uppercase tracking-wide border-b border-slate-100 pb-2">E. Found Pet Actions</h3>
                             
-                            {/* Custody Selector */}
-                            <div className="mb-6">
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Custody Status</label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <button 
-                                        type="button"
-                                        onClick={() => setCustodyStatus('user_holding')}
-                                        className={`p-4 rounded-xl border-2 text-left transition-all ${custodyStatus === 'user_holding' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white hover:border-emerald-200'}`}
-                                    >
-                                        <div className="flex items-center gap-2 font-bold text-slate-800 mb-1">
-                                            <Shield size={18} className={custodyStatus === 'user_holding' ? 'text-emerald-600' : 'text-slate-400'} />
-                                            I can hold the pet
-                                        </div>
-                                        <p className="text-xs text-slate-500">I will keep them safe until the owner is found.</p>
-                                    </button>
 
-                                    <button 
-                                        type="button"
-                                        onClick={() => setCustodyStatus('rescuer_notified')}
-                                        className={`p-4 rounded-xl border-2 text-left transition-all ${custodyStatus === 'rescuer_notified' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white hover:border-amber-200'}`}
-                                    >
-                                        <div className="flex items-center gap-2 font-bold text-slate-800 mb-1">
-                                            <CheckCircle size={18} className={custodyStatus === 'rescuer_notified' ? 'text-amber-600' : 'text-slate-400'} />
-                                            I need a Rescuer/Shelter
-                                        </div>
-                                        <p className="text-xs text-slate-500">I cannot hold the pet. Notify a professional to pick them up.</p>
-                                    </button>
+                            {/* Custody / Help Section (Replaced) */}
+                            <div className="pt-4 border-t border-slate-100">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Custody & Help</label>
+                                <div className="space-y-4">
+                                    <div className="flex flex-col gap-2">
+                                        <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                                            <input 
+                                                type="radio" 
+                                                name="helpRequest" 
+                                                checked={helpRequest === 'none'} 
+                                                onChange={() => setHelpRequest('none')}
+                                                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                                            />
+                                            <div className="flex-1">
+                                                <span className="font-bold text-slate-700 block">I can hold the pet</span>
+                                                <span className="text-xs text-slate-500">You will keep the pet until the owner is found.</span>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                                            <input 
+                                                type="radio" 
+                                                name="helpRequest" 
+                                                checked={helpRequest === 'rescuer'} 
+                                                onChange={() => setHelpRequest('rescuer')}
+                                                className="w-4 h-4 text-orange-500 focus:ring-orange-500"
+                                            />
+                                            <div className="flex-1">
+                                                <span className="font-bold text-slate-700 block">Ask Rescuer for Help</span>
+                                                <span className="text-xs text-slate-500">Broadcast to all rescuers. They will contact you to pick up the pet.</span>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                                            <input 
+                                                type="radio" 
+                                                name="helpRequest" 
+                                                checked={helpRequest === 'shelter'} 
+                                                onChange={() => setHelpRequest('shelter')}
+                                                className="w-4 h-4 text-indigo-500 focus:ring-indigo-500"
+                                            />
+                                            <div className="flex-1">
+                                                <span className="font-bold text-slate-700 block">Ask Shelter for Help</span>
+                                                <span className="text-xs text-slate-500">Request a shelter to take the pet in. Visible to Shelters/Admin.</span>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-
-                            {/* Rescuer Select (Only if needed) */}
-                            {custodyStatus === 'rescuer_notified' && (
-                                <div className="mb-6 p-4 bg-amber-50/50 rounded-xl border border-amber-100">
-                                    <InputGroup label="Select Rescuer/Shelter to Notify">
-                                        <select 
-                                            value={selectedRescuer}
-                                            onChange={(e) => setSelectedRescuer(e.target.value)}
-                                            required={custodyStatus === 'rescuer_notified'}
-                                            className="input-field"
-                                        >
-                                            <option value="">Select a nearby rescuer...</option>
-                                            {rescuers.map(r => (
-                                                <option key={r.id} value={r.id}>{r.full_name || 'Organization'} ({r.location || 'Unknown Area'})</option>
-                                            ))}
-                                        </select>
-                                    </InputGroup>
-                                </div>
-                            )}
 
                             {/* Injury Toggle */}
                             <div className="pt-4 border-t border-slate-100">
@@ -1806,11 +1911,8 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                                     <>
                                                         <div 
                                                             onClick={(e) => { 
-                                                                e.stopPropagation();
-                                                                if (injuryCameraInputRef.current) {
-                                                                    injuryCameraInputRef.current.setAttribute('capture', 'environment');
-                                                                    injuryCameraInputRef.current.click();
-                                                                }
+                                                                e.stopPropagation(); 
+                                                                injuryCameraInputRef.current?.click(); 
                                                             }}
                                                             className="aspect-square rounded-lg border-2 border-dashed border-rose-200 hover:border-rose-400 hover:bg-rose-50 transition-all flex flex-col items-center justify-center cursor-pointer text-rose-400 group"
                                                         >
@@ -1819,11 +1921,8 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                                         </div>
                                                         <div 
                                                             onClick={(e) => { 
-                                                                e.stopPropagation();
-                                                                if (injuryFileInputRef.current) {
-                                                                    injuryFileInputRef.current.removeAttribute('capture');
-                                                                    injuryFileInputRef.current.click();
-                                                                }
+                                                                e.stopPropagation(); 
+                                                                injuryFileInputRef.current?.click(); 
                                                             }}
                                                             className="aspect-square rounded-lg border-2 border-dashed border-rose-200 hover:border-blue-400 hover:bg-blue-50 transition-all flex flex-col items-center justify-center cursor-pointer text-rose-400 hover:text-blue-500 group"
                                                         >
@@ -1832,7 +1931,7 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                                         </div>
                                                     </>
                                                 )}
-                                                <input ref={injuryFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleInjuryImageChange} />
+                                                <input ref={injuryFileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleInjuryImageChange} />
                                                 <input ref={injuryCameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleInjuryImageChange} />
                                             </div>
                                         </div>

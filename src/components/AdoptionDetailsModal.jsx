@@ -125,7 +125,11 @@ export default function AdoptionDetailsModal({ animal, isOpen, onClose, session 
                             {animal.breed} • {animal.age_years > 0 ? `${animal.age_years} yrs ` : ''}{animal.age_months > 0 ? `${animal.age_months} mos` : ''}
                         </p>
                     </div>
-                    {animal.status === 'available' && (
+                    {appSuccess ? (
+                         <div className="bg-amber-500 px-3 py-1 rounded-full font-bold text-xs tracking-wider">
+                            APPLICATION SENT
+                         </div>
+                    ) : animal.status === 'available' && (
                          <div className="bg-green-500 px-3 py-1 rounded-full font-bold text-xs tracking-wider">
                             AVAILABLE
                          </div>
@@ -142,9 +146,9 @@ export default function AdoptionDetailsModal({ animal, isOpen, onClose, session 
                     {/* Left: Info */}
                     <div className="md:col-span-2">
                         <div className="flex flex-wrap gap-3 mb-6">
-                             <div className="bg-slate-100 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2"><MapPin size={14} /> {animal.location || 'Unknown Location'}</div>
-                             <div className="bg-slate-100 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2 capitalize">{animal.gender}</div>
-                             {animal.vaccinated && <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2"><Shield size={14} /> Vaccinated</div>}
+                             <div className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2"><MapPin size={14} /> {animal.location || 'Unknown Location'}</div>
+                             <div className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2 capitalize">{animal.gender}</div>
+                             {animal.vaccinated && <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2"><Shield size={14} /> Vaccinated</div>}
                         </div>
 
                         <div className="mb-8 pb-4 border-b border-border">
@@ -188,6 +192,7 @@ export default function AdoptionDetailsModal({ animal, isOpen, onClose, session 
                             <h4 className="m-0 mb-2 text-lg">Interested in {animal.name}?</h4>
                             <p className="text-sm text-muted mb-4">Submit an application to start the adoption process.</p>
                             
+                            {animal.posted_by !== session?.user?.id && (
                                 <button 
                                     onClick={() => setView('apply')}
                                     className={`btn btn-primary w-full justify-center ${appSuccess ? 'opacity-50 cursor-not-allowed bg-green-600 border-green-600' : ''}`}
@@ -195,6 +200,7 @@ export default function AdoptionDetailsModal({ animal, isOpen, onClose, session 
                                 >
                                     {appSuccess ? 'Application Submitted' : 'Apply to Adopt'}
                                 </button>
+                            )}
                             
                             <div className="text-center mt-4 text-xs text-muted">
                                 Posted by: {animal.posted_by === session?.user?.id ? 'You' : 'Owner/Shelter'}

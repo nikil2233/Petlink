@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { useChat } from '../context/ChatContext';
 import { 
   FileText, Check, X, Clock, ChevronDown, ChevronUp, 
   User, MapPin, Calendar, MessageCircle, Shield, AlertCircle 
@@ -12,6 +13,7 @@ export default function AdoptionRequests() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const navigate = useNavigate();
+  const { openChat } = useChat();
 
   useEffect(() => {
     fetchRequests();
@@ -241,157 +243,213 @@ export default function AdoptionRequests() {
                 <p className="text-slate-500 dark:text-slate-400">Wait for potential adopters to submit their applications.</p>
             </div>
         ) : (
-            <div className="flex flex-col gap-6">
-                {requests.map((req, index) => (
-                    <motion.div 
-                        key={req.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className={`bg-white dark:bg-slate-800 rounded-[2rem] overflow-hidden transition-all duration-300 border border-slate-100 dark:border-slate-700 ${expandedId === req.id ? 'shadow-2xl ring-1 ring-slate-100 dark:ring-slate-700' : 'shadow-sm hover:shadow-md'}`}
-                    >
-                        {/* Summary Header */}
-                        <div 
-                            className="p-6 md:p-8 cursor-pointer flex flex-col md:flex-row items-start md:items-center gap-6"
-                            onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
-                        >
-                            {/* Pet Info */}
-                            <div className="flex items-center gap-5 flex-1">
-                                <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-100 dark:bg-slate-700 rounded-2xl overflow-hidden shadow-inner shrink-0 relative">
-                                    {req.adoptions.image_url ? (
-                                        <img src={req.adoptions.image_url} className="w-full h-full object-cover" alt="Pet" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-500"><FileText size={24}/></div>
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1">{req.adoptions.name}</h3>
-                                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium text-sm">
-                                        <User size={14} /> 
-                                        <span>Applicant: <span className="text-slate-700 dark:text-slate-300">{req.profiles?.full_name || 'Unknown'}</span></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Status & Toggle */}
-                            <div className="flex items-center justify-between w-full md:w-auto gap-6 mt-4 md:mt-0">
-                                <StatusBadge status={req.status} />
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${expandedId === req.id ? 'bg-slate-100 dark:bg-slate-700 rotate-180' : 'bg-slate-50 dark:bg-slate-700/50'}`}>
-                                    <ChevronDown size={20} className="text-slate-400 dark:text-slate-500" />
-                                </div>
-                            </div>
+            <div className="flex flex-col gap-12">
+                {/* Active Applications */}
+                {requests.filter(r => r.status === 'pending').length > 0 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-l-4 border-amber-500 pl-4 md:pl-6 py-2">
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
+                           <div className="bg-amber-500 w-3 h-3 rounded-full shadow-sm ring-4 ring-amber-500/20"></div>
+                           Awaiting Review
+                        </h2>
+                        <div className="flex flex-col gap-6">
+                            {requests.filter(r => r.status === 'pending').map((req) => (
+                                <RequestCard 
+                                    key={req.id} 
+                                    req={req} 
+                                    expandedId={expandedId} 
+                                    setExpandedId={setExpandedId} 
+                                    handleReject={handleReject} 
+                                    handleApproveClick={handleApproveClick} 
+                                    openChat={openChat} 
+                                />
+                            ))}
                         </div>
-
-                        {/* Expanded Content */}
-                        <AnimatePresence>
-                            {expandedId === req.id && (
-                                <motion.div 
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                >
-                                    <div className="bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700">
-                                    <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
-                                        
-                                        {/* Left Col: Applicant Info */}
-                                        <div className="space-y-6">
-                                            <h4 className="flex items-center gap-2 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                                <User size={16} /> Applicant Profile
-                                            </h4>
-                                            
-                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm space-y-4">
-                                                <InfoRow label="Full Name" value={req.profiles?.full_name} />
-                                                <InfoRow label="Email" value={req.profiles?.email} />
-                                                <InfoRow label="Phone" value={req.phone} />
-                                                <InfoRow label="Location" value={req.address} icon={<MapPin size={14} className="text-slate-400 dark:text-slate-500" />} />
-                                            </div>
-                                        </div>
-
-                                        {/* Right Col: Answers */}
-                                        <div className="space-y-6">
-                                            <h4 className="flex items-center gap-2 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                                <FileText size={16} /> Application Details
-                                            </h4>
-                                            
-                                            <div className="space-y-4">
-                                                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
-                                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Living Situation</p>
-                                                    <p className="font-semibold text-slate-700 dark:text-slate-200">{req.living_situation}</p>
-                                                </div>
-                                                
-                                                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
-                                                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Experience & Pets</p>
-                                                    <div className="flex items-start gap-2">
-                                                        {req.has_other_pets && (
-                                                            <div className="mt-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 p-1 rounded-md shrink-0" title="Has other pets">
-                                                                <AlertCircle size={14} />
-                                                            </div>
-                                                        )}
-                                                        <p className="font-semibold text-slate-700 dark:text-slate-200 leading-relaxed">
-                                                            {req.experience || "No details provided."}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
-                                                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-                                                    <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                        <MessageCircle size={12} /> Message
-                                                    </p>
-                                                    <p className="font-medium text-slate-600 dark:text-slate-300 italic leading-relaxed">"{req.message}"</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Action Bar */}
-                                    <div className="p-6 md:p-8 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white">
-                                        {req.status === 'pending' ? (
-                                            <div className="flex flex-col md:flex-row gap-4 justify-end">
-                                                <button 
-                                                    onClick={(e) => handleReject(req.id, e)}
-                                                    className="px-8 py-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 hover:border-red-100 dark:hover:border-red-900/30 transition-colors flex items-center justify-center gap-2"
-                                                >
-                                                    <X size={18} /> Reject
-                                                </button>
-                                                <button 
-                                                    onClick={(e) => handleApproveClick(req, e)}
-                                                    className="px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow-lg shadow-emerald-200 dark:shadow-none hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    <Check size={18} /> Approve Application
-                                                </button>
-                                            </div>
-                                        ) : req.status === 'approved' ? (
-                                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl p-4 flex items-start gap-3">
-                                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-full text-emerald-600 dark:text-emerald-400 shrink-0">
-                                                    <Check size={20} />
-                                                </div>
-                                                <div>
-                                                    <h5 className="font-bold text-emerald-900 dark:text-emerald-400">Application Approved</h5>
-                                                    <p className="text-sm text-emerald-700 dark:text-emerald-500 mt-1">
-                                                        Meeting scheduled for <strong>{new Date(req.meeting_datetime).toLocaleDateString()}</strong> at <strong>{new Date(req.meeting_datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</strong>.
-                                                    </p>
-                                                    <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-2 uppercase tracking-wide font-bold">Instructions: {req.meeting_instructions}</p>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-xl p-4 flex items-center gap-3 text-red-700 dark:text-red-400 font-bold opacity-75">
-                                                <X size={20} /> Application Rejected
-                                            </div>
-                                        )}
-                                    </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
                     </motion.div>
-                ))}
+                )}
+
+                {/* History */}
+                {requests.filter(r => r.status !== 'pending').length > 0 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3 opacity-90">
+                           <div className="bg-slate-300 dark:bg-slate-600 w-3 h-3 rounded-full shadow-sm"></div>
+                           History
+                        </h2>
+                        <div className="flex flex-col gap-6 opacity-85">
+                            {requests.filter(r => r.status !== 'pending').map((req) => (
+                                <RequestCard 
+                                    key={req.id} 
+                                    req={req} 
+                                    expandedId={expandedId} 
+                                    setExpandedId={setExpandedId} 
+                                    handleReject={handleReject} 
+                                    handleApproveClick={handleApproveClick} 
+                                    openChat={openChat} 
+                                />
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
             </div>
         )}
       </div>
     </div>
   );
 }
+
+// Helper Component for Card
+const RequestCard = ({ req, expandedId, setExpandedId, handleReject, handleApproveClick, openChat }) => {
+    return (
+        <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`bg-white dark:bg-slate-800 rounded-[2rem] overflow-hidden transition-all duration-300 border border-slate-100 dark:border-slate-700 ${expandedId === req.id ? 'shadow-2xl ring-1 ring-slate-100 dark:ring-slate-700' : 'shadow-sm hover:shadow-md'}`}
+        >
+            {/* Summary Header */}
+            <div 
+                className="p-6 md:p-8 cursor-pointer flex flex-col md:flex-row items-start md:items-center gap-6"
+                onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
+            >
+                {/* Pet Info */}
+                <div className="flex items-center gap-5 flex-1">
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-100 dark:bg-slate-700 rounded-2xl overflow-hidden shadow-inner shrink-0 relative">
+                        {req.adoptions.image_url ? (
+                            <img src={req.adoptions.image_url} className="w-full h-full object-cover" alt="Pet" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-500"><FileText size={24}/></div>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1">{req.adoptions.name}</h3>
+                        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium text-sm">
+                            <User size={14} /> 
+                            <span>Applicant: <span className="text-slate-700 dark:text-slate-300">{req.profiles?.full_name || 'Unknown'}</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Status & Toggle */}
+                <div className="flex items-center justify-between w-full md:w-auto gap-6 mt-4 md:mt-0">
+                    <StatusBadge status={req.status} />
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${expandedId === req.id ? 'bg-slate-100 dark:bg-slate-700 rotate-180' : 'bg-slate-50 dark:bg-slate-700/50'}`}>
+                        <ChevronDown size={20} className="text-slate-400 dark:text-slate-500" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Expanded Content */}
+            <AnimatePresence>
+                {expandedId === req.id && (
+                    <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                    >
+                        <div className="bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700">
+                        <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
+                            
+                            {/* Left Col: Applicant Info */}
+                            <div className="space-y-6">
+                                <h4 className="flex items-center gap-2 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                    <User size={16} /> Applicant Profile
+                                </h4>
+                                
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm space-y-4">
+                                    <InfoRow label="Full Name" value={req.profiles?.full_name} />
+                                    <InfoRow label="Email" value={req.profiles?.email} />
+                                    <InfoRow label="Phone" value={req.phone} />
+                                    <InfoRow label="Location" value={req.address} icon={<MapPin size={14} className="text-slate-400 dark:text-slate-500" />} />
+                                </div>
+                            </div>
+
+                            {/* Right Col: Answers */}
+                            <div className="space-y-6">
+                                <h4 className="flex items-center gap-2 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                    <FileText size={16} /> Application Details
+                                </h4>
+                                
+                                <div className="space-y-4">
+                                    <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Living Situation</p>
+                                        <p className="font-semibold text-slate-700 dark:text-slate-200">{req.living_situation}</p>
+                                    </div>
+                                    
+                                    <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Experience & Pets</p>
+                                        <div className="flex items-start gap-2">
+                                            {req.has_other_pets && (
+                                                <div className="mt-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 p-1 rounded-md shrink-0" title="Has other pets">
+                                                    <AlertCircle size={14} />
+                                                </div>
+                                            )}
+                                            <p className="font-semibold text-slate-700 dark:text-slate-200 leading-relaxed">
+                                                {req.experience || "No details provided."}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                                        <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                            <MessageCircle size={12} /> Message
+                                        </p>
+                                        <p className="font-medium text-slate-600 dark:text-slate-300 italic leading-relaxed">"{req.message}"</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Bar */}
+                        <div className="p-6 md:p-8 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white">
+                            {req.status === 'pending' ? (
+                                <div className="flex flex-col md:flex-row gap-4 justify-end">
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openChat(req.requester_id);
+                                        }}
+                                        className="px-6 py-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <MessageCircle size={18} /> Message
+                                    </button>
+                                    <button 
+                                        onClick={(e) => handleReject(req.id, e)}
+                                        className="px-8 py-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 hover:border-red-100 dark:hover:border-red-900/30 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <X size={18} /> Reject
+                                    </button>
+                                    <button 
+                                        onClick={(e) => handleApproveClick(req, e)}
+                                        className="px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow-lg shadow-emerald-200 dark:shadow-none hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Check size={18} /> Approve Application
+                                    </button>
+                                </div>
+                            ) : req.status === 'approved' ? (
+                                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 rounded-xl p-4 flex items-start gap-3">
+                                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-full text-emerald-600 dark:text-emerald-400 shrink-0">
+                                        <Check size={20} />
+                                    </div>
+                                    <div>
+                                        <h5 className="font-bold text-emerald-900 dark:text-emerald-400">Application Approved</h5>
+                                        <p className="text-sm text-emerald-700 dark:text-emerald-500 mt-1">
+                                            Meeting scheduled for <strong>{new Date(req.meeting_datetime).toLocaleDateString()}</strong> at <strong>{new Date(req.meeting_datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</strong>.
+                                        </p>
+                                        <p className="text-xs text-emerald-600/80 dark:text-emerald-500/80 mt-2 uppercase tracking-wide font-bold">Instructions: {req.meeting_instructions}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-xl p-4 flex items-center gap-3 text-red-700 dark:text-red-400 font-bold opacity-75">
+                                    <X size={20} /> Application Rejected
+                                </div>
+                            )}
+                        </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+};
 
 // Helpers
 const StatusBadge = ({ status }) => {

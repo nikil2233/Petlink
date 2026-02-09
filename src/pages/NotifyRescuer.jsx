@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Camera, AlertTriangle, Send, X, Shield, Info, Heart, Upload, Navigation } from 'lucide-react';
+import { MapPin, Camera, AlertTriangle, Send, X, Shield, Info, Heart, Upload, Navigation, User, Phone, HeartHandshake } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { compressImage } from '../utils/imageUtils';
+import toast from 'react-hot-toast';
 
 export default function NotifyRescuer() {
   const navigate = useNavigate();
   const { session, role: userRole, loading: authLoading } = useAuth();
+  // Allow Admin to access this page too
+  const hasAccess = userRole === 'user' || userRole === 'admin'; 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   
@@ -35,6 +38,48 @@ export default function NotifyRescuer() {
   // Re-assignment State
   const [reassignReport, setReassignReport] = useState(null);
   const [newRescuerId, setNewRescuerId] = useState('');
+
+  const handleHandover = (reportId) => {
+      toast((t) => (
+          <div className="flex flex-col gap-2">
+            <span className="font-bold text-slate-800">Did you hand over the animal?</span>
+            <div className="flex gap-2 mt-2">
+              <button 
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  confirmHandover(reportId);
+                }}
+                className="px-3 py-1 bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-sm"
+              >
+                Yes, Handed Over
+              </button>
+              <button 
+                onClick={() => toast.dismiss(t.id)}
+                className="px-3 py-1 bg-slate-200 text-slate-700 rounded-lg text-sm font-bold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+      ), { duration: 5000 });
+  };
+
+  const confirmHandover = async (reportId) => {
+      const toastId = toast.loading('Updating status...');
+      try {
+          const { error } = await supabase
+              .from('reports')
+              .update({ status: 'completed' }) 
+              .eq('id', reportId);
+
+          if (error) throw error;
+          toast.success('Thank you! Rescue complete.', { id: toastId });
+          fetchMyReports();
+      } catch (err) {
+          console.error("Error updating status:", err);
+          toast.error('Failed to update status.', { id: toastId });
+      }
+  };
 
   const handleReassignSubmit = async () => {
       if (!newRescuerId) return;
@@ -70,11 +115,10 @@ export default function NotifyRescuer() {
 
   const fetchRescuers = async () => {
       try {
-          // Only fetch necessary fields
           const { data, error } = await supabase
             .from('profiles')
-            .select('id, full_name, role, location')
-            .in('role', ['rescuer', 'shelter']);
+            .select('*')
+            .eq('role', 'rescuer');
           
           if (error) throw error;
           setRescuers(data || []);
@@ -287,7 +331,7 @@ export default function NotifyRescuer() {
     );
   }
 
-  if (userRole !== 'user') {
+  if (userRole !== 'user' && userRole !== 'admin') {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
             <motion.div 
@@ -486,6 +530,51 @@ export default function NotifyRescuer() {
                                     <Info size={16} />
                                 </div>
                             </div>
+                            
+                            {/* Selected Rescuer Details */}
+                            {selectedRescuer && (() => {
+                                const r = rescuers.find(res => res.id === selectedRescuer);
+                                if (!r) return null;
+                                return (
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="mt-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-600 shadow-sm"
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-600 shadow-sm overflow-hidden shrink-0 border-2 border-white dark:border-slate-500 flex items-center justify-center">
+                                                {r.avatar_url ? (
+                                                    <img src={r.avatar_url} alt={r.full_name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <User size={32} className="text-slate-300 dark:text-slate-500" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-bold text-lg text-slate-800 dark:text-white truncate">{r.full_name || 'Rescuer'}</h4>
+                                                
+                                                <div className="flex flex-wrap gap-3 my-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                    {r.location && (
+                                                        <span className="flex items-center gap-1 bg-white dark:bg-slate-800 px-2 py-1 rounded-md shadow-sm border border-slate-100 dark:border-slate-600">
+                                                            <MapPin size={12} className="text-orange-500" /> {r.location}
+                                                        </span>
+                                                    )}
+                                                    {r.phone && (
+                                                        <span className="flex items-center gap-1 bg-white dark:bg-slate-800 px-2 py-1 rounded-md shadow-sm border border-slate-100 dark:border-slate-600">
+                                                            <Phone size={12} className="text-emerald-500" /> {r.phone}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {r.about && (
+                                                    <p className="text-sm text-slate-600 dark:text-slate-300 italic bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                                                        "{r.about}"
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })()}
                         </div>
 
                         {/* Location */}
@@ -543,10 +632,7 @@ export default function NotifyRescuer() {
                                         <div 
                                             onClick={(e) => { 
                                                 e.stopPropagation(); 
-                                                if (cameraInputRef.current) {
-                                                    cameraInputRef.current.setAttribute('capture', 'environment');
-                                                    cameraInputRef.current.click(); 
-                                                }
+                                                cameraInputRef.current?.click(); 
                                             }}
                                             className="flex-1 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/10 flex flex-col items-center justify-center transition-all group/cam"
                                         >
@@ -556,10 +642,7 @@ export default function NotifyRescuer() {
                                         <div 
                                             onClick={(e) => { 
                                                 e.stopPropagation(); 
-                                                if (fileInputRef.current) {
-                                                    fileInputRef.current.removeAttribute('capture');
-                                                    fileInputRef.current.click(); 
-                                                }
+                                                fileInputRef.current?.click(); 
                                             }}
                                             className="flex-1 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 flex flex-col items-center justify-center transition-all group/up"
                                         >
@@ -660,6 +743,7 @@ export default function NotifyRescuer() {
                                                  report.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                                                  report.status === 'assigned' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                                                  report.status === 'accepted' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                                 report.status === 'completed' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' :
                                                  'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
                                              }`}>
                                                  {report.status}
@@ -686,9 +770,20 @@ export default function NotifyRescuer() {
                                         </div>
 
                                         {report.rescuer && (
-                                            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/50 flex items-center gap-2 text-xs font-medium text-slate-500">
-                                                <span>Assigned to:</span>
-                                                <span className="text-slate-700 dark:text-slate-300 font-bold">{report.rescuer.full_name}</span>
+                                            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/50 flex flex-col gap-3">
+                                                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                                                   <span>Assigned to:</span>
+                                                   <span className="text-slate-700 dark:text-slate-300 font-bold">{report.rescuer.full_name}</span>
+                                                </div>
+                                                
+                                                {report.status === 'accepted' && (
+                                                    <button 
+                                                        onClick={() => handleHandover(report.id)}
+                                                        className="w-full py-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold text-xs hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors flex items-center justify-center gap-2"
+                                                    >
+                                                        <HeartHandshake size={16} /> I gave the animal to Rescuer
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>

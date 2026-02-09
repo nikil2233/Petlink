@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, AlertTriangle, CheckCircle2, Clock, XCircle, HeartHandshake, Shield, Activity, Calendar, Siren, PawPrint, User, MessageCircle } from 'lucide-react';
+import { MapPin, AlertTriangle, CheckCircle2, Clock, XCircle, HeartHandshake, Shield, Activity, Calendar, Siren, PawPrint, User, MessageCircle, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -30,7 +30,7 @@ const SkeletonCard = () => (
     </div>
 );
 
-export default function RescuerFeed() {
+export default function ShelterDashboard() {
   const navigate = useNavigate();
   const { openChat } = useChat();
   const [reports, setReports] = useState([]);
@@ -82,7 +82,7 @@ export default function RescuerFeed() {
           .single();
       
       if (data) {
-          if (!['rescuer', 'shelter', 'vet'].includes(data.role)) {
+          if (!['shelter'].includes(data.role)) {
               setAccessDenied(true);
           } else {
               fetchReports(userId, data.role);
@@ -92,27 +92,27 @@ export default function RescuerFeed() {
 
   if (accessDenied) {
       return (
-          <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950 dark:to-orange-950 p-6 transition-colors duration-300">
+          <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-950 dark:to-indigo-950 p-6 transition-colors duration-300">
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-12 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-slate-700/50 text-center max-w-lg w-full relative overflow-hidden"
               >
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-500/10 dark:bg-red-500/5 rounded-full blur-3xl -z-10"></div>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full blur-3xl -z-10"></div>
                   
                   <div className="text-8xl mb-6 animate-bounce">🚫</div>
                   
-                  <h2 className="text-4xl font-black mb-4 bg-gradient-to-r from-red-600 to-rose-400 dark:from-red-400 dark:to-rose-300 bg-clip-text text-transparent">
-                      Access Restricted
+                  <h2 className="text-4xl font-black mb-4 bg-gradient-to-r from-indigo-600 to-violet-400 dark:from-indigo-400 dark:to-violet-300 bg-clip-text text-transparent">
+                      Shelter Access Only
                   </h2>
                   
                   <p className="text-slate-500 dark:text-slate-400 text-lg mb-8 leading-relaxed">
-                      This command center is reserved for verified <strong className="text-rose-600 dark:text-rose-400">Rescuers & NGOs</strong>. 
+                      This dashboard is reserved for verified <strong className="text-indigo-600 dark:text-indigo-400">Animal Shelters</strong>. 
                   </p>
                   
                   <button 
                       onClick={() => window.location.href = '/'}
-                      className="group relative inline-flex items-center justify-center px-8 py-3 font-bold text-white transition-all duration-200 bg-gradient-to-tr from-rose-600 to-orange-500 rounded-full hover:from-rose-700 hover:to-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 hover:shadow-lg hover:scale-105"
+                      className="group relative inline-flex items-center justify-center px-8 py-3 font-bold text-white transition-all duration-200 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-full hover:from-indigo-700 hover:to-violet-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 hover:shadow-lg hover:scale-105"
                   >
                        Return to Home
                   </button>
@@ -149,12 +149,8 @@ export default function RescuerFeed() {
 
               // 2. If unassigned, check type compatibility
               if (!report.assigned_rescuer_id) {
-                  if (role === 'shelter') {
-                      return report.type === 'shelter_req';
-                  } else if (role === 'rescuer') {
-                      // Rescuers see everything EXCEPT shelter-specific requests
-                      return report.type !== 'shelter_req';
-                  }
+                  // Shelter only sees shelter requests
+                  return report.type === 'shelter_req';
               }
               return false;
           });
@@ -227,7 +223,7 @@ export default function RescuerFeed() {
               .update({ 
                   status: 'accepted',
                   expected_pickup_time: timestamp,
-                  assigned_rescuer_id: currentUser.id // Assign to self
+                  assigned_rescuer_id: currentUser.id // Assign to self (Shelter)
               })
               .eq('id', schedulingReport.id);
 
@@ -238,8 +234,8 @@ export default function RescuerFeed() {
               .insert([{
                   user_id: schedulingReport.user_id,
                   type: 'report_update',
-                  title: 'Rescue Scheduled',
-                  message: `We are coming to your place to pick the animal on ${pickupDate} at ${pickupTime}.`
+                  title: 'Shelter Intake Scheduled',
+                  message: `A shelter has accepted your request. Pickup/Intake scheduled for ${pickupDate} at ${pickupTime}.`
               }]);
           
           if (notifyError) console.error("Notification Error:", notifyError);
@@ -250,10 +246,10 @@ export default function RescuerFeed() {
 
           setSchedulingReport(null);
           setSelectedReport(null);
-          setSuccessMsg("Pickup scheduled successfully! We've notified the reporter.");
+          setSuccessMsg("Intake scheduled successfully! Reporter notified.");
       } catch (err) {
           console.error("Error scheduling pickup:", err);
-          toast.error("Failed to confirm pickup. Please try again.");
+          toast.error("Failed to confirm intake. Please try again.");
       } finally {
           setLoading(false);
       }
@@ -275,11 +271,11 @@ export default function RescuerFeed() {
       <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm/50 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2">
-                <div className="bg-rose-600 p-1.5 rounded-lg text-white shadow-sm shadow-rose-200 dark:shadow-rose-900/20">
-                    <Shield size={18} />
+                <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-sm shadow-indigo-200 dark:shadow-indigo-900/20">
+                    <Home size={18} />
                 </div>
                 <h1 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight">
-                    {currentUser?.role === 'shelter' ? 'Shelter Dashboard' : 'Rescuer Portal'}
+                    Shelter Dashboard
                 </h1>
             </div>
             
@@ -310,25 +306,24 @@ export default function RescuerFeed() {
                  animate={{ opacity: 1, x: 0 }}
                  transition={{ duration: 0.5 }}
               >
-                  <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-1">Mission Control</h2>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Manage your active rescue assignments.</p>
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-1">Intake Management</h2>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Process shelter requests and schedule intakes.</p>
               </motion.div>
 
               {/* Status Filters - APPLIED BUTTON STANDARD */}
-              {/* Size: Compact (px-[16px] py-[8px], text-[14px]) | Radius: 8px (rounded-[8px]) */}
               <motion.div 
                  initial={{ opacity: 0, x: 20 }}
                  animate={{ opacity: 1, x: 0 }}
                  transition={{ duration: 0.5, delay: 0.1 }}
                  className="flex gap-3"
               >
-                  {/* New Alerts Button (Primary) */}
+                  {/* New Requests Button (Primary) */}
                   <button 
                       onClick={() => setActiveTab('pending')}
                       className={`flex items-center gap-2 px-[16px] py-[8px] rounded-[8px] text-[14px] font-medium shadow-sm transition-all duration-200 ease group
                         ${activeTab === 'pending' 
-                            ? 'bg-rose-600 text-white shadow-rose-200 dark:shadow-rose-900/20 ring-2 ring-rose-600 ring-offset-2 dark:ring-offset-slate-900' 
-                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-600 dark:hover:text-rose-400'}`}
+                            ? 'bg-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-900/20 ring-2 ring-indigo-600 ring-offset-2 dark:ring-offset-slate-900' 
+                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-700 hover:text-indigo-600 dark:hover:text-indigo-400'}`}
                   >
                       <div className={`transition-opacity duration-200 ${activeTab === 'pending' ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
                           {activeTab === 'pending' ? (
@@ -337,7 +332,7 @@ export default function RescuerFeed() {
                               <img src="/bell-new.png" alt="Alert" className="w-5 h-5 object-contain dark:invert" />
                           )}
                       </div>
-                      <span>New Alerts</span>
+                      <span>Intake Requests</span>
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${activeTab === 'pending' ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'}`}>
                           {pendingCount}
                       </span>
@@ -387,10 +382,10 @@ export default function RescuerFeed() {
                             {filteredReports.length === 0 ? (
                                 <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl bg-slate-50/50 dark:bg-slate-800/50">
                                     <div className="mx-auto w-16 h-16 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center shadow-sm mb-3">
-                                        <PawPrint className="text-slate-300 dark:text-slate-500" size={32} />
+                                        <Home className="text-slate-300 dark:text-slate-500" size={32} />
                                     </div>
-                                    <h3 className="text-slate-800 dark:text-white font-bold mb-1">No reports found</h3>
-                                    <p className="text-slate-400 dark:text-slate-500 text-sm">You are all caught up for {activeTab === 'pending' ? 'new alerts' : 'scheduled pickups'}.</p>
+                                    <h3 className="text-slate-800 dark:text-white font-bold mb-1">No requests found</h3>
+                                    <p className="text-slate-400 dark:text-slate-500 text-sm">You are all caught up for {activeTab === 'pending' ? 'new requests' : 'scheduled intakes'}.</p>
                                 </div>
                             ) : filteredReports.map((report, index) => (
                                 <motion.div 
@@ -432,9 +427,6 @@ export default function RescuerFeed() {
                                             <MapPin size={14} className="text-slate-400 mt-0.5" />
                                             <div className="flex-1">
                                                 <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">{report.location || 'Unknown Location'}</p>
-                                                {report.latitude && report.longitude && (
-                                                    <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-1 inline-block">Click to view details</span>
-                                                )}
                                             </div>
                                         </div>
                                         
@@ -452,23 +444,20 @@ export default function RescuerFeed() {
                                         )}
                                     </div>
 
-                                    {/* Actions - APPLIED BUTTON STANDARD (EXPLICIT PIXELS) */}
+                                    {/* Actions */}
                                     {report.status === 'pending' && (
                                         <div className="grid grid-cols-2 gap-2 mt-auto">
-                                            {/* Secondary Button: Transparent, Border, Colored Text */}
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); updateReportStatus(report.id, 'declined'); }}
                                                 className="px-[16px] py-[8px] rounded-[8px] border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 text-[14px] font-bold hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-200 ease"
                                             >
                                                 Decline
                                             </button>
-                                            
-                                            {/* Primary Button: Solid Brand Color, White Text */}
                                             <button 
                                                 onClick={(e) => handleAcceptClick(report, e)}
-                                                className="px-[16px] py-[8px] rounded-[8px] bg-rose-600 dark:bg-rose-700 text-white text-[14px] font-bold hover:bg-rose-700 dark:hover:bg-rose-600 shadow-sm hover:shadow-md transition-all duration-200 ease flex items-center justify-center gap-1.5 active:scale-95"
+                                                className="px-[16px] py-[8px] rounded-[8px] bg-indigo-600 dark:bg-indigo-700 text-white text-[14px] font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 shadow-sm hover:shadow-md transition-all duration-200 ease flex items-center justify-center gap-1.5 active:scale-95"
                                             >
-                                                <HeartHandshake size={16} /> Accept
+                                                <Home size={16} /> Accept
                                             </button>
                                         </div>
                                     )}
@@ -494,14 +483,14 @@ export default function RescuerFeed() {
                                                 {report.status === 'pending' && (
                                                     <button 
                                                         onClick={() => handleAcceptClick(report)}
-                                                        className="w-full bg-rose-600 text-white py-1.5 rounded-[8px] text-[12px] font-bold shadow-sm hover:bg-rose-700 transition-all duration-200 ease"
+                                                        className="w-full bg-indigo-600 text-white py-1.5 rounded-[8px] text-[12px] font-bold shadow-sm hover:bg-indigo-700 transition-all duration-200 ease"
                                                     >
-                                                        Accept Mission
+                                                        Review & Accept
                                                     </button>
                                                 )}
                                                 <button 
                                                     onClick={() => setSelectedReport(report)}
-                                                    className="w-full mt-2 text-rose-600 text-[10px] font-bold hover:underline"
+                                                    className="w-full mt-2 text-indigo-600 text-[10px] font-bold hover:underline"
                                                 >
                                                     View Details
                                                 </button>
@@ -552,7 +541,7 @@ export default function RescuerFeed() {
                                   </div>
                               )}
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                              <div className="absolute bottom-6 left-6 text-white max-w-lg">
+                                <div className="absolute bottom-6 left-6 text-white max-w-lg">
                                     <div className="flex items-center gap-3 mb-2">
                                       <span className={`${getUrgencyColor(selectedReport.urgency)} !bg-white/20 !text-white !border-white/20 backdrop-blur-sm`}>
                                           {selectedReport.urgency}
@@ -561,26 +550,7 @@ export default function RescuerFeed() {
                                           <Clock size={14} /> {new Date(selectedReport.created_at).toLocaleString()}
                                       </span>
                                     </div>
-                                    {selectedReport.profiles && (
-                                        <div className="flex items-center gap-2 text-sm font-medium opacity-90 transition-opacity hover:opacity-100">
-                                            <span className="opacity-70">Reported by:</span>
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    navigate(`/profile/${selectedReport.user_id}`);
-                                                }}
-                                                className="font-bold border-b border-transparent hover:border-white transition-all flex items-center gap-1.5 bg-black/20 px-2 py-1 rounded-lg backdrop-blur-sm hover:bg-white/20"
-                                            >
-                                                {selectedReport.profiles.avatar_url ? (
-                                                    <img src={selectedReport.profiles.avatar_url} className="w-5 h-5 rounded-full object-cover border border-white/50" alt="" />
-                                                ) : (
-                                                    <User size={14} />
-                                                )}
-                                                {selectedReport.profiles.full_name || 'Anonymous'}
-                                            </button>
-                                        </div>
-                                    )}
-                              </div>
+                               </div>
                           </div>
 
                           <div className="p-8">
@@ -590,36 +560,25 @@ export default function RescuerFeed() {
                                   {/* Location Block */}
                                   <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-600">
                                       <div className="flex items-center gap-2 mb-2 font-bold text-slate-700 dark:text-slate-200">
-                                          <MapPin size={18} className="text-rose-500" /> Location Details
+                                          <MapPin size={18} className="text-indigo-500" /> Location Details
                                       </div>
                                       <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-4">{selectedReport.location}</p>
                                       
-                                      {selectedReport.latitude && selectedReport.longitude ? (
+                                      {selectedReport.latitude && selectedReport.longitude && (
                                           <div className="h-32 rounded-xl overflow-hidden relative border border-slate-200 dark:border-slate-600 shadow-sm group cursor-pointer">
                                               <img 
                                                 src={`https://static-maps.yandex.ru/1.x/?lang=en-US&ll=${selectedReport.longitude},${selectedReport.latitude}&z=15&l=map&size=600,300&pt=${selectedReport.longitude},${selectedReport.latitude},pm2rdm`} 
                                                 alt="Map"
                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                                               />
-                                              <a 
-                                                  href={`https://www.google.com/maps?q=${selectedReport.latitude},${selectedReport.longitude}`} 
-                                                  target="_blank" 
-                                                  rel="noreferrer"
-                                                  className="absolute inset-0 bg-black/10 hover:bg-black/20 flex items-center justify-center transition-colors"
-                                              >
-                                                   <span className="bg-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md text-cyan-900">Open in Google Maps</span>
-                                              </a>
                                           </div>
-                                      ) : (
-                                          <div className="text-xs text-slate-400 italic">No GPS coordinates available.</div>
                                       )}
-                                      {/* Message Reporter Button */}
-                              <button 
-                                  onClick={() => openChat(selectedReport.user_id)}
-                                  className="mt-4 w-full py-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-center gap-2 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
-                              >
-                                  <MessageCircle size={18} /> Message Reporter
-                              </button>
+                                      <button 
+                                          onClick={() => openChat(selectedReport.user_id)}
+                                          className="mt-4 w-full py-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-center gap-2 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+                                      >
+                                          <MessageCircle size={18} /> Message Reporter
+                                      </button>
                                   </div>
 
                                   {/* Status Block */}
@@ -646,13 +605,13 @@ export default function RescuerFeed() {
                                           onClick={() => { updateReportStatus(selectedReport.id, 'declined'); setSelectedReport(null); }}
                                           className="flex-1 py-4 rounded-xl font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
                                       >
-                                          Decline Report
+                                          Decline Request
                                       </button>
                                       <button 
                                           onClick={() => { setSelectedReport(null); handleAcceptClick(selectedReport); }}
-                                          className="flex-1 py-4 rounded-xl font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-200 dark:shadow-rose-900/20 transition-all flex items-center justify-center gap-2"
+                                          className="flex-1 py-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20 transition-all flex items-center justify-center gap-2"
                                       >
-                                          <Siren size={20} /> Accept Mission
+                                          <Home size={20} /> Accept Intake
                                       </button>
                                   </div>
                               )}
@@ -678,10 +637,10 @@ export default function RescuerFeed() {
                         className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl ring-1 ring-black/5 dark:ring-white/5"
                     >
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-2">
-                            <Calendar className="text-rose-500" size={20} /> Schedule Pickup
+                            <Calendar className="text-indigo-500" size={20} /> Schedule Intake/Pickup
                         </h3>
                         <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-                            Confirm pickup time for <strong>{schedulingReport.location}</strong>
+                            Confirm when you will receive or pick up from <strong>{schedulingReport.location}</strong>
                         </p>
                         
                         <div className="space-y-4 mb-6">
@@ -689,7 +648,7 @@ export default function RescuerFeed() {
                                 <label className="text-xs font-bold text-slate-500 uppercase">Date</label>
                                 <input 
                                     type="date" 
-                                    className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-rose-500 outline-none"
+                                    className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                                     value={pickupDate}
                                     onChange={e => setPickupDate(e.target.value)}
                                 />
@@ -698,14 +657,14 @@ export default function RescuerFeed() {
                                  <label className="text-xs font-bold text-slate-500 uppercase">Time</label>
                                 <input 
                                     type="time" 
-                                    className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-rose-500 outline-none"
+                                    className="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-700 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                                     value={pickupTime}
                                     onChange={e => setPickupTime(e.target.value)}
                                 />
                             </div>
                         </div>
 
-                        {/* Modal Actions - APPLIED BUTTON STANDARD (EXPLICIT PIXELS) */}
+                        {/* Modal Actions */}
                         <div className="grid grid-cols-2 gap-3">
                             <button 
                                 onClick={() => setSchedulingReport(null)}
@@ -715,7 +674,7 @@ export default function RescuerFeed() {
                             </button>
                             <button 
                                 onClick={confirmPickup}
-                                className="px-[16px] py-[8px] rounded-[8px] font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm hover:shadow-md transition-all duration-200 ease text-[14px] active:scale-95"
+                                className="px-[16px] py-[8px] rounded-[8px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm hover:shadow-md transition-all duration-200 ease text-[14px] active:scale-95"
                             >
                                 Confirm
                             </button>
@@ -765,4 +724,3 @@ export default function RescuerFeed() {
     </div>
   );
 }
-

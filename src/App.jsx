@@ -26,6 +26,7 @@ import SuccessStories from './pages/SuccessStories';
 import UserProfile from './pages/UserProfile';
 import VerificationUpload from './pages/VerificationUpload';
 import AdminDashboard from './pages/AdminDashboard';
+import ShelterDashboard from './pages/ShelterDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import ChatDrawer from './components/ChatDrawer';
 
@@ -73,6 +74,7 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route path="/shelter-dashboard" element={<ShelterDashboard />} />
       </Routes>
       <Footer />
     </Router>

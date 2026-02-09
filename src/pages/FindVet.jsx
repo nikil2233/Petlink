@@ -157,7 +157,7 @@ export default function FindVet() {
                 rating: (4 + (index % 10) * 0.1).toFixed(1),
                 services: ['Vaccination', 'Sterilization', 'General Checkup', 'Emergency Care'],
                 hours: 'Mon-Sat: 9:00 AM - 8:00 PM',
-                description: 'Providing compassionate care for your furry family members with multiple specialties and 24/7 support.'
+                description: (v.about || v.goal) ? `${v.about || ''} ${v.goal ? '\n\nGoal: ' + v.goal : ''}` : 'Providing compassionate care for your furry family members with multiple specialties and 24/7 support.'
               };
           });
 
