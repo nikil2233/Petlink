@@ -203,7 +203,7 @@ export default function Navbar() {
                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                    animate={{ opacity: 1, y: 0, scale: 1 }}
                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                   className="absolute right-0 top-full mt-4 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-50 origin-top-right"
+                                   className="fixed top-20 left-4 right-4 md:absolute md:top-full md:left-auto md:right-0 md:w-80 md:mt-4 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-50 origin-top-right"
                                >
                                    <div className="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-b border-slate-100 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-300 text-sm">
                                        Notifications

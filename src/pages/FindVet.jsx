@@ -133,6 +133,15 @@ export default function FindVet() {
       setFilteredVets(result);
   }, [searchQuery, vets, activeTab]);
 
+  // Fix for Leaflet map not rendering correctly when toggled from hidden state
+  useEffect(() => {
+    if (mobileView === 'map') {
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 200);
+    }
+  }, [mobileView]);
+
   const fetchVets = async () => {
       try {
           const { data, error } = await supabase
