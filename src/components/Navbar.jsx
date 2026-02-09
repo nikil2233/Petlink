@@ -303,6 +303,10 @@ export default function Navbar() {
                          <MobileLink to="/adoption-requests" onClick={() => setIsOpen(false)} icon={Clipboard}>Adoption Requests</MobileLink>
                     )}
 
+                    {userRole === 'admin' && (
+                         <MobileLink to="/admin" onClick={() => setIsOpen(false)} icon={Shield}>Admin Dashboard</MobileLink>
+                    )}
+
                     {session ? (
                          <>
                             <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />

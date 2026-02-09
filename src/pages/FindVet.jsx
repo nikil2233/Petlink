@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useTheme } from '../context/ThemeContext';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import { Navigation, MapPin, Phone, Star, Heart, Clock, Stethoscope, Mail, X, Search, Filter } from 'lucide-react';
+import { Navigation, MapPin, Phone, Star, Heart, Clock, Stethoscope, Mail, X, Search, Filter, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -72,7 +72,9 @@ export default function FindVet() {
   const [selectedVet, setSelectedVet] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
   const [activeTab, setActiveTab] = useState('nearest'); // 'nearest' or 'all'
+  const [mobileView, setMobileView] = useState('list'); // 'list' | 'map'
 
   // Haversine formula to calculate distance
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -203,7 +205,7 @@ export default function FindVet() {
       <div className="flex-1 flex overflow-hidden relative">
           
           {/* SIDEBAR LIST */}
-          <div className="w-full md:w-[450px] h-full flex flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative">
+          <div className={`${mobileView === 'list' ? 'block' : 'hidden'} md:block w-full md:w-[450px] h-full flex flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative`}>
               
               {/* List Content */}
               <div className="flex-1 flex flex-col overflow-hidden">
@@ -302,7 +304,7 @@ export default function FindVet() {
           </div>
 
           {/* MAP CONTAINER */}
-          <div className="hidden md:block flex-1 relative bg-slate-100 dark:bg-slate-900 z-0">
+          <div className={`${mobileView === 'map' ? 'block' : 'hidden'} md:block flex-1 relative bg-slate-100 dark:bg-slate-900 z-0`}>
               <MapContainer center={COLOMBO_CENTER} zoom={13} className="w-full h-full outline-none">
                   <TileLayer
                     attribution='&copy; OpenStreetMap contributors &copy; CARTO'
@@ -344,6 +346,20 @@ export default function FindVet() {
                   ))}
               </MapContainer>
           </div>
+      </div>
+      
+      {/* MOBILE VIEW TOGGLE FAB */}
+      <div className="md:hidden absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
+        <button 
+            onClick={() => setMobileView(prev => prev === 'list' ? 'map' : 'list')}
+            className="bg-slate-900 dark:bg-slate-700 text-white px-6 py-3 rounded-full font-bold shadow-xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all border border-slate-700 dark:border-slate-500"
+        >
+            {mobileView === 'list' ? (
+                <><MapPin size={18} /> Show Map</>
+            ) : (
+                <><List size={18} /> Show List</>
+            )}
+        </button>
       </div>
 
       {/* VET DETAILS MODAL */}
