@@ -1610,14 +1610,14 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                 {images.length < 3 && (
                                     <>
                                         <div 
-                                            onClick={() => cameraInputRef.current?.click()}
+                                            onClick={(e) => { e.stopPropagation(); cameraInputRef.current.click(); }}
                                             className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-50 hover:border-orange-400 transition-colors group"
                                         >
                                             <Camera className="text-slate-400 group-hover:text-orange-500 mb-2 transition-colors" />
                                             <span className="text-[10px] font-bold text-slate-400 group-hover:text-orange-500">Camera</span>
                                         </div>
                                         <div 
-                                            onClick={() => fileInputRef.current?.click()}
+                                            onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }}
                                             className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors group"
                                         >
                                             <Upload className="text-slate-400 group-hover:text-blue-500 mb-2 transition-colors" />
