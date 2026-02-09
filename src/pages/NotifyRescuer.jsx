@@ -16,6 +16,7 @@ export default function NotifyRescuer() {
   // Data
   const [rescuers, setRescuers] = useState([]);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   // Form Fields
   const [description, setDescription] = useState('');
@@ -538,12 +539,25 @@ export default function NotifyRescuer() {
                                         </button>
                                     </>
                                 ) : (
-                                    <>
-                                        <Upload size={24} className="text-slate-400" />
-                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-2">Tap to Upload Scene Photo</span>
-                                    </>
+                                    <div className="flex flex-row gap-4 w-full h-full p-4">
+                                        <div 
+                                            onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }}
+                                            className="flex-1 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/10 flex flex-col items-center justify-center transition-all group/cam"
+                                        >
+                                            <Camera size={24} className="text-slate-400 group-hover/cam:text-orange-500 transition-colors" />
+                                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-2 group-hover/cam:text-orange-500">Take Photo</span>
+                                        </div>
+                                        <div 
+                                            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                                            className="flex-1 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 flex flex-col items-center justify-center transition-all group/up"
+                                        >
+                                            <Upload size={24} className="text-slate-400 group-hover/up:text-blue-500 transition-colors" />
+                                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-2 group-hover/up:text-blue-500">Upload File</span>
+                                        </div>
+                                    </div>
                                 )}
                                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
                                 </div>
                         </div>
 

@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
     MapPin, Camera, AlertTriangle, Send, X, Search, Phone, 
     Calendar, Clock, PawPrint, CheckCircle, FileText, Download, 
-    Share2, Eye, Shield, Lock, Unlock, Truck, Heart, Bell, ChevronLeft, ChevronRight, MessageCircle, Trash2 
+    Share2, Eye, Shield, Lock, Unlock, Truck, Heart, Bell, ChevronLeft, ChevronRight, MessageCircle, Trash2, Upload 
 } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 import { useAuth } from '../context/AuthContext';
@@ -26,7 +26,11 @@ export default function LostAndFound() {
   
   // Data for Feed
   const [lostPets, setLostPets] = useState([]);
+
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const injuryFileInputRef = useRef(null);
+  const injuryCameraInputRef = useRef(null);
 
   // --- FORM STATE ---
   const [reportType, setReportType] = useState('lost'); // 'lost', 'found'
@@ -1604,16 +1608,26 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                     </div>
                                 ))}
                                 {images.length < 3 && (
-                                    <div 
-                                        onClick={() => fileInputRef.current.click()}
-                                        className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-red-400 transition-colors"
-                                    >
-                                        <Camera className="text-slate-400 mb-2" />
-                                        <span className="text-xs font-bold text-slate-400">Add Photo</span>
-                                    </div>
+                                    <>
+                                        <div 
+                                            onClick={() => cameraInputRef.current?.click()}
+                                            className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-50 hover:border-orange-400 transition-colors group"
+                                        >
+                                            <Camera className="text-slate-400 group-hover:text-orange-500 mb-2 transition-colors" />
+                                            <span className="text-[10px] font-bold text-slate-400 group-hover:text-orange-500">Camera</span>
+                                        </div>
+                                        <div 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors group"
+                                        >
+                                            <Upload className="text-slate-400 group-hover:text-blue-500 mb-2 transition-colors" />
+                                            <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-500">Upload</span>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                             <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleImageChange} />
+                            <input ref={cameraInputRef} type="file" multiple accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
                         </div>
                     </Section>
 
@@ -1777,12 +1791,25 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                                     </div>
                                                 ))}
                                                 {injuryImages.length < 3 && (
-                                                    <label className="aspect-square rounded-lg border-2 border-dashed border-rose-200 hover:border-rose-400 hover:bg-rose-50 transition-all flex flex-col items-center justify-center cursor-pointer text-rose-400">
-                                                        <Camera size={20} />
-                                                        <span className="text-[10px] font-bold mt-1">Add Photo</span>
-                                                        <input type="file" accept="image/*" className="hidden" onChange={handleInjuryImageChange} />
-                                                    </label>
+                                                    <>
+                                                        <div 
+                                                            onClick={() => injuryCameraInputRef.current?.click()}
+                                                            className="aspect-square rounded-lg border-2 border-dashed border-rose-200 hover:border-rose-400 hover:bg-rose-50 transition-all flex flex-col items-center justify-center cursor-pointer text-rose-400 group"
+                                                        >
+                                                            <Camera size={20} className="group-hover:scale-110 transition-transform" />
+                                                            <span className="text-[10px] font-bold mt-1">Camera</span>
+                                                        </div>
+                                                        <div 
+                                                            onClick={() => injuryFileInputRef.current?.click()}
+                                                            className="aspect-square rounded-lg border-2 border-dashed border-rose-200 hover:border-blue-400 hover:bg-blue-50 transition-all flex flex-col items-center justify-center cursor-pointer text-rose-400 hover:text-blue-500 group"
+                                                        >
+                                                            <Upload size={20} className="group-hover:scale-110 transition-transform" />
+                                                            <span className="text-[10px] font-bold mt-1">Upload</span>
+                                                        </div>
+                                                    </>
                                                 )}
+                                                <input ref={injuryFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleInjuryImageChange} />
+                                                <input ref={injuryCameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleInjuryImageChange} />
                                             </div>
                                         </div>
                                     </div>

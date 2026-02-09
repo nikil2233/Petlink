@@ -3,10 +3,12 @@ describe('Adoption Center', () => {
     cy.visit('/adopt');
     cy.contains('Find Your New').should('be.visible');
 
+    // Wait for loading to finish (wait for spinner to disappear)
+    cy.get('.animate-spin', { timeout: 10000 }).should('not.exist');
+
     // Test Search Filter
     const invalidSearch = 'Unicorn_' + Date.now();
     cy.get('input[placeholder*="Search"]').type(invalidSearch);
-    cy.contains('Filter').click();
     
     // Should show no results
     cy.contains('No pets found').should('be.visible');
