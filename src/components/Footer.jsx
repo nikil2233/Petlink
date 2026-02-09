@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { PawPrint, Heart, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Shield } from 'lucide-react';
+import { PawPrint, Heart, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Shield, ArrowUpRight } from 'lucide-react';
+import petlinkQr from '../assets/petlink_qr.png';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -33,6 +34,18 @@ export default function Footer() {
               <SocialIcon icon={Twitter} />
               <SocialIcon icon={Instagram} />
               <SocialIcon icon={Linkedin} />
+            </div>
+
+            <div className="pt-8">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    Scan to Visit <ArrowUpRight size={14} className="text-rose-500" />
+                </p>
+                <div className="bg-white p-2 w-32 h-32 rounded-xl shadow-lg border-4 border-slate-800 hover:scale-105 transition-transform cursor-pointer group relative overflow-hidden">
+                    <img src={petlinkQr} alt="Scan QR Code" className="w-full h-full object-contain" />
+                    <div className="absolute inset-0 bg-rose-500/0 group-hover:bg-rose-500/10 transition-colors rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <ArrowUpRight size={24} className="text-rose-600 bg-white rounded-full p-1 shadow-sm animate-bounce" />
+                    </div>
+                </div>
             </div>
           </div>
 
