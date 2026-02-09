@@ -1610,14 +1610,26 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                 {images.length < 3 && (
                                     <>
                                         <div 
-                                            onClick={(e) => { e.stopPropagation(); cameraInputRef.current.click(); }}
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                if (cameraInputRef.current) {
+                                                    cameraInputRef.current.setAttribute('capture', 'environment');
+                                                    cameraInputRef.current.click(); 
+                                                }
+                                            }}
                                             className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-50 hover:border-orange-400 transition-colors group"
                                         >
                                             <Camera className="text-slate-400 group-hover:text-orange-500 mb-2 transition-colors" />
                                             <span className="text-[10px] font-bold text-slate-400 group-hover:text-orange-500">Camera</span>
                                         </div>
                                         <div 
-                                            onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }}
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                if (fileInputRef.current) {
+                                                    fileInputRef.current.removeAttribute('capture');
+                                                    fileInputRef.current.click(); 
+                                                }
+                                            }}
                                             className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors group"
                                         >
                                             <Upload className="text-slate-400 group-hover:text-blue-500 mb-2 transition-colors" />
@@ -1793,14 +1805,26 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                                 {injuryImages.length < 3 && (
                                                     <>
                                                         <div 
-                                                            onClick={() => injuryCameraInputRef.current?.click()}
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation();
+                                                                if (injuryCameraInputRef.current) {
+                                                                    injuryCameraInputRef.current.setAttribute('capture', 'environment');
+                                                                    injuryCameraInputRef.current.click();
+                                                                }
+                                                            }}
                                                             className="aspect-square rounded-lg border-2 border-dashed border-rose-200 hover:border-rose-400 hover:bg-rose-50 transition-all flex flex-col items-center justify-center cursor-pointer text-rose-400 group"
                                                         >
                                                             <Camera size={20} className="group-hover:scale-110 transition-transform" />
                                                             <span className="text-[10px] font-bold mt-1">Camera</span>
                                                         </div>
                                                         <div 
-                                                            onClick={() => injuryFileInputRef.current?.click()}
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation();
+                                                                if (injuryFileInputRef.current) {
+                                                                    injuryFileInputRef.current.removeAttribute('capture');
+                                                                    injuryFileInputRef.current.click();
+                                                                }
+                                                            }}
                                                             className="aspect-square rounded-lg border-2 border-dashed border-rose-200 hover:border-blue-400 hover:bg-blue-50 transition-all flex flex-col items-center justify-center cursor-pointer text-rose-400 hover:text-blue-500 group"
                                                         >
                                                             <Upload size={20} className="group-hover:scale-110 transition-transform" />
