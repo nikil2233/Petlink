@@ -2,17 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { 
   Menu, X, Heart, LogOut, Stethoscope, 
   MapPin, Calendar, ChevronDown, Bell, 
   PawPrint, Home, Megaphone, Activity, 
-  User, Dog, AlertTriangle, Clipboard, MessageCircle, Shield, BadgeCheck
+  User, Dog, AlertTriangle, Clipboard, MessageCircle, Shield, BadgeCheck, Sun, Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '../context/ChatContext';
 
 export default function Navbar() {
   const { session, user, role: userRole, signOut, profile } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { setIsOpen: setIsOpenChat, unreadCount } = useChat();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -168,6 +170,15 @@ export default function Navbar() {
                     </Link>
                 )
             )}
+            {/* Theme Toggle */}
+            <button 
+                onClick={toggleTheme}
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors"
+                title="Toggle Theme"
+            >
+                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+
             {session ? (
                 <>
                    {/* CHAT */}

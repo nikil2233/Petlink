@@ -3,24 +3,22 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  // Purely rely on system preference
   const [theme, setTheme] = useState(() => {
+    // Check local storage first
+    if (typeof window !== 'undefined' && localStorage.getItem('theme')) {
+      return localStorage.getItem('theme');
+    }
+    // Fallback to system preference
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleChange = (e) => {
-      setTheme(e.matches ? 'dark' : 'light');
-    };
-
-    // Set initial value in case it changed before hydration
-    setTheme(mediaQuery.matches ? 'dark' : 'light');
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+  const toggleTheme = () => {
+    setTheme(prev => {
+      const newTheme = prev === 'light' ? 'dark' : 'light';
+      localStorage.setItem('theme', newTheme);
+      return newTheme;
+    });
+  };
 
   // Apply to DOM
   useEffect(() => {
@@ -30,8 +28,18 @@ export const ThemeProvider = ({ children }) => {
     root.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Listen for system changes if no preference is stored (optional, but good UX)
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    if (!localStorage.getItem('theme')) {
+        const handleChange = (e) => setTheme(e.matches ? 'dark' : 'light');
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, []);
+
   return (
-    <ThemeContext.Provider value={{ theme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

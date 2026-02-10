@@ -598,7 +598,7 @@ export default function NotifyRescuer() {
                                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                                 <input 
                                     type="text" 
-                                    placeholder="Add address details (e.g. Opposite the park)..."
+                                    placeholder="Add your address"
                                     value={locationName}
                                     onChange={(e) => setLocationName(e.target.value)}
                                     className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-medium text-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-orange-400 transition-all placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-600"

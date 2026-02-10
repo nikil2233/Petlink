@@ -480,7 +480,7 @@ export default function LostAndFound() {
                 longitude: coords ? coords.lng : null,
                 image_url: mainImage,
                 status: 'pending',
-                assigned_rescuer_id: null // Broadcast
+                assigned_rescuer_id: selectedRescuer || null // Broadcast or specific
             };
 
             const { error: repError } = await supabase.from('reports').insert([reportPayload]);
@@ -1822,47 +1822,96 @@ PROOF IMAGE: ${proofImageUrl === "No image provided" ? "None" : "See attachment"
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Custody & Help</label>
                                 <div className="space-y-4">
                                     <div className="flex flex-col gap-2">
-                                        <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                                        {/* OPTION 1: USER HOLDING */}
+                                        <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${helpRequest === 'none' ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
                                             <input 
                                                 type="radio" 
                                                 name="helpRequest" 
                                                 checked={helpRequest === 'none'} 
-                                                onChange={() => setHelpRequest('none')}
-                                                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                                                onChange={() => { 
+                                                    setHelpRequest('none');
+                                                    setCustodyStatus('user_holding');
+                                                    setSelectedRescuer('');
+                                                }}
+                                                className="w-4 h-4 mt-1 text-emerald-600 focus:ring-emerald-500"
                                             />
                                             <div className="flex-1">
-                                                <span className="font-bold text-slate-700 block">I can hold the pet</span>
-                                                <span className="text-xs text-slate-500">You will keep the pet until the owner is found.</span>
+                                                <span className={`font-bold block ${helpRequest === 'none' ? 'text-emerald-900' : 'text-slate-700'}`}>I can hold the pet</span>
+                                                <span className={`text-xs ${helpRequest === 'none' ? 'text-emerald-700' : 'text-slate-500'}`}>You will keep the pet until the owner is found.</span>
                                             </div>
                                         </label>
 
-                                        <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                                            <input 
-                                                type="radio" 
-                                                name="helpRequest" 
-                                                checked={helpRequest === 'rescuer'} 
-                                                onChange={() => setHelpRequest('rescuer')}
-                                                className="w-4 h-4 text-orange-500 focus:ring-orange-500"
-                                            />
-                                            <div className="flex-1">
-                                                <span className="font-bold text-slate-700 block">Ask Rescuer for Help</span>
-                                                <span className="text-xs text-slate-500">Broadcast to all rescuers. They will contact you to pick up the pet.</span>
-                                            </div>
-                                        </label>
+                                        {/* OPTION 2: ASK RESCUER */}
+                                        <div className={`rounded-xl border transition-all ${helpRequest === 'rescuer' ? 'bg-orange-50 border-orange-200 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                                            <label className="flex items-start gap-3 p-3 cursor-pointer">
+                                                <input 
+                                                    type="radio" 
+                                                    name="helpRequest" 
+                                                    checked={helpRequest === 'rescuer'} 
+                                                    onChange={() => { 
+                                                        setHelpRequest('rescuer');
+                                                        setCustodyStatus('rescuer_notified');
+                                                        setSelectedRescuer('');
+                                                    }}
+                                                    className="w-4 h-4 mt-1 text-orange-500 focus:ring-orange-500"
+                                                />
+                                                <div className="flex-1">
+                                                    <span className={`font-bold block ${helpRequest === 'rescuer' ? 'text-orange-900' : 'text-slate-700'}`}>Ask Rescuer for Help</span>
+                                                    <span className={`text-xs ${helpRequest === 'rescuer' ? 'text-orange-700' : 'text-slate-500'}`}>Broadcast to rescuers to pick up the pet.</span>
+                                                </div>
+                                            </label>
+                                            
+                                            {helpRequest === 'rescuer' && (
+                                                <div className="px-3 pb-3 animate-in fade-in slide-in-from-top-1">
+                                                    <select 
+                                                        className="w-full text-sm p-2 rounded-lg border border-orange-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-orange-500"
+                                                        value={selectedRescuer}
+                                                        onChange={(e) => setSelectedRescuer(e.target.value)}
+                                                    >
+                                                        <option value="">Broadcast to All Rescuers</option>
+                                                        {rescuers.filter(r => r.role === 'rescuer').map(r => (
+                                                            <option key={r.id} value={r.id}>{r.full_name} ({r.location || 'Unknown'})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
 
-                                        <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                                            <input 
-                                                type="radio" 
-                                                name="helpRequest" 
-                                                checked={helpRequest === 'shelter'} 
-                                                onChange={() => setHelpRequest('shelter')}
-                                                className="w-4 h-4 text-indigo-500 focus:ring-indigo-500"
-                                            />
-                                            <div className="flex-1">
-                                                <span className="font-bold text-slate-700 block">Ask Shelter for Help</span>
-                                                <span className="text-xs text-slate-500">Request a shelter to take the pet in. Visible to Shelters/Admin.</span>
-                                            </div>
-                                        </label>
+                                        {/* OPTION 3: ASK SHELTER */}
+                                        <div className={`rounded-xl border transition-all ${helpRequest === 'shelter' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                                            <label className="flex items-start gap-3 p-3 cursor-pointer">
+                                                <input 
+                                                    type="radio" 
+                                                    name="helpRequest" 
+                                                    checked={helpRequest === 'shelter'} 
+                                                    onChange={() => { 
+                                                        setHelpRequest('shelter');
+                                                        setCustodyStatus('rescuer_notified'); 
+                                                        setSelectedRescuer('');
+                                                    }}
+                                                    className="w-4 h-4 mt-1 text-indigo-500 focus:ring-indigo-500"
+                                                />
+                                                <div className="flex-1">
+                                                    <span className={`font-bold block ${helpRequest === 'shelter' ? 'text-indigo-900' : 'text-slate-700'}`}>Ask Shelter for Help</span>
+                                                    <span className={`text-xs ${helpRequest === 'shelter' ? 'text-indigo-700' : 'text-slate-500'}`}>Request a shelter intake.</span>
+                                                </div>
+                                            </label>
+                                            
+                                            {helpRequest === 'shelter' && (
+                                                <div className="px-3 pb-3 animate-in fade-in slide-in-from-top-1">
+                                                    <select 
+                                                        className="w-full text-sm p-2 rounded-lg border border-indigo-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        value={selectedRescuer}
+                                                        onChange={(e) => setSelectedRescuer(e.target.value)}
+                                                    >
+                                                        <option value="">Broadcast to All Shelters</option>
+                                                        {rescuers.filter(r => r.role === 'shelter').map(r => (
+                                                            <option key={r.id} value={r.id}>{r.full_name} ({r.location || 'Unknown'})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
