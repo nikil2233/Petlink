@@ -217,7 +217,7 @@ export default function FindVet() {
           <div className={`${mobileView === 'list' ? 'block' : 'hidden'} md:block w-full md:w-[450px] h-full flex flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative`}>
               
               {/* List Content */}
-              <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 flex flex-col overflow-hidden min-h-0">
                   
                   {/* TABS */}
                   <div className="px-4 pt-4 pb-2 flex gap-2">
@@ -235,7 +235,7 @@ export default function FindVet() {
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200">
+                  <div className="flex-1 overflow-y-auto p-4 pb-24 md:pb-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 min-h-0">
                   {loadingLocation && (
                       <div className="p-4 bg-emerald-50 text-emerald-700 rounded-xl text-center text-sm font-bold animate-pulse flex items-center justify-center gap-2">
                           <MapPin size={16} className="animate-bounce" /> Triangulating your location...
